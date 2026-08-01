@@ -1,0 +1,729 @@
+<title>Единая маршрутизация — сценарии диспетчера</title>
+<style>
+  :root {
+    --bg: #eef1f0; --surface: #ffffff; --surface-2: #f5f7f6;
+    --ink: #17222a; --muted: #566169; --muted-2: #7c8790; --line: #d9dedc;
+    --accent: #146c6c; --accent-ink: #ffffff; --accent-soft: #dcecea; --accent-soft-line: #b7d6d2;
+    --ok: #2e7d46; --ok-soft: #e1f3e6;
+    --warn: #9a6a0c; --warn-soft: #fbedd3;
+    --critical: #b23a3a; --critical-soft: #f8e2e0;
+    --cat-client: #146c6c; --cat-pvz: #3d5a80; --cat-pickup: #7a4fa3; --cat-return: #a8571f;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+    --radius: 8px;
+    --shadow: 0 1px 2px rgba(23,34,42,0.06), 0 4px 14px rgba(23,34,42,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12181b; --surface: #1a2226; --surface-2: #202a2f;
+      --ink: #e7edec; --muted: #a3aeb3; --muted-2: #7e8a90; --line: #2c383d;
+      --accent: #5bbcb4; --accent-ink: #0d1a19; --accent-soft: #1e3634; --accent-soft-line: #2f5652;
+      --ok: #6fc98a; --ok-soft: #1c3524;
+      --warn: #e3ab52; --warn-soft: #3a2d16;
+      --critical: #e2837c; --critical-soft: #3a2320;
+      --cat-client: #5bbcb4; --cat-pvz: #7fa0cf; --cat-pickup: #b494dd; --cat-return: #d99a65;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 18px rgba(0,0,0,0.28);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12181b; --surface: #1a2226; --surface-2: #202a2f;
+    --ink: #e7edec; --muted: #a3aeb3; --muted-2: #7e8a90; --line: #2c383d;
+    --accent: #5bbcb4; --accent-ink: #0d1a19; --accent-soft: #1e3634; --accent-soft-line: #2f5652;
+    --ok: #6fc98a; --ok-soft: #1c3524;
+    --warn: #e3ab52; --warn-soft: #3a2d16;
+    --critical: #e2837c; --critical-soft: #3a2320;
+    --cat-client: #5bbcb4; --cat-pvz: #7fa0cf; --cat-pickup: #b494dd; --cat-return: #d99a65;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 18px rgba(0,0,0,0.28);
+  }
+  :root[data-theme="light"] {
+    --bg: #eef1f0; --surface: #ffffff; --surface-2: #f5f7f6;
+    --ink: #17222a; --muted: #566169; --muted-2: #7c8790; --line: #d9dedc;
+    --accent: #146c6c; --accent-ink: #ffffff; --accent-soft: #dcecea; --accent-soft-line: #b7d6d2;
+    --ok: #2e7d46; --ok-soft: #e1f3e6;
+    --warn: #9a6a0c; --warn-soft: #fbedd3;
+    --critical: #b23a3a; --critical-soft: #f8e2e0;
+    --cat-client: #146c6c; --cat-pvz: #3d5a80; --cat-pickup: #7a4fa3; --cat-return: #a8571f;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  button { font-family: inherit; }
+  table { border-collapse: collapse; width: 100%; }
+  ::selection { background: var(--accent-soft-line); }
+
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* ---- top header + stepper ---- */
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--line); padding: 14px 20px 0; }
+  .topbar__row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 20px; padding-bottom: 12px; }
+  .eyebrow { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted-2); }
+  .topbar h1 { margin: 2px 0 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; text-wrap: balance; }
+  .topbar__date { margin-left: auto; font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .stepper { display: flex; overflow-x: auto; gap: 2px; }
+  .stepper__item {
+    display: flex; align-items: center; gap: 8px;
+    border: none; background: none; cursor: pointer;
+    padding: 10px 14px 12px; white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    color: var(--muted); font-size: 12.5px;
+  }
+  .stepper__item:hover { color: var(--ink); }
+  .stepper__item.is-active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 650; }
+  .stepper__num {
+    width: 19px; height: 19px; border-radius: 50%; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 10.5px;
+    background: var(--surface-2); color: var(--muted);
+  }
+  .stepper__item.is-active .stepper__num { background: var(--accent); color: var(--accent-ink); }
+
+  main { flex: 1; display: flex; flex-direction: column; }
+  .screen { flex: 1; display: flex; flex-direction: column; padding: 18px 20px 24px; gap: 14px; max-width: 1180px; width: 100%; margin: 0 auto; }
+  .screen[hidden] { display: none; }
+
+  .screen__intro { font-size: 12.5px; color: var(--muted); max-width: 70ch; }
+  .screen__intro b { color: var(--ink); }
+
+  h2.section-title { margin: 0; font-size: 13px; font-weight: 650; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .panel__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+  .panel__sub { font-size: 11.5px; color: var(--muted-2); }
+  .panel__body { padding: 12px 14px; }
+
+  .btn {
+    font-size: 12.5px; font-weight: 600; padding: 8px 14px; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer;
+  }
+  .btn:hover { border-color: var(--muted-2); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn-primary:hover { filter: brightness(1.05); }
+  .btn-primary:disabled, .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-ghost { background: none; }
+  .btn-sm { padding: 5px 10px; font-size: 11.5px; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 5px; font-size: 10.5px; font-weight: 650; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); }
+  .badge--client { color: var(--cat-client); border-color: color-mix(in srgb, var(--cat-client) 35%, var(--line)); }
+  .badge--pvz { color: var(--cat-pvz); border-color: color-mix(in srgb, var(--cat-pvz) 35%, var(--line)); }
+  .badge--pickup { color: var(--cat-pickup); border-color: color-mix(in srgb, var(--cat-pickup) 35%, var(--line)); }
+  .badge--return { color: var(--cat-return); border-color: color-mix(in srgb, var(--cat-return) 35%, var(--line)); }
+
+  .status-chip { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 650; white-space: nowrap; }
+  .status-chip--ok { background: var(--ok-soft); color: var(--ok); }
+  .status-chip--warn { background: var(--warn-soft); color: var(--warn); }
+  .status-chip--critical { background: var(--critical-soft); color: var(--critical); }
+  .status-chip--neutral { background: var(--surface-2); color: var(--muted); }
+
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  /* toast */
+  .toast {
+    position: fixed; right: 20px; bottom: 20px; z-index: 20;
+    background: var(--ink); color: var(--bg); padding: 11px 16px; border-radius: 8px;
+    font-size: 12.5px; box-shadow: var(--shadow);
+    opacity: 0; transform: translateY(6px); pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+  .toast.is-visible { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+
+  /* ===================== Screen 1: потребности + флот ===================== */
+  .s1-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; }
+  @media (max-width: 880px) { .s1-grid { grid-template-columns: 1fr; } }
+
+  table.demand-table th, table.demand-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+  table.demand-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-2); font-weight: 600; }
+  table.demand-table tr:last-child td { border-bottom: none; }
+  .demand-total { font-weight: 650; }
+  .demand-flag { font-size: 11px; color: var(--warn); }
+
+  .fleet-list { display: flex; flex-direction: column; gap: 8px; }
+  .fleet-card { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); }
+  .fleet-card__name { font-weight: 600; font-size: 12.5px; flex: 1; }
+  .fleet-card__cap { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .engine-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 620px) { .engine-choice { grid-template-columns: 1fr; } }
+  .engine-card {
+    border: 1px solid var(--line); border-radius: 8px; padding: 12px; text-align: left; background: var(--surface);
+    cursor: pointer; display: flex; flex-direction: column; gap: 6px;
+  }
+  .engine-card__head { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 13px; }
+  .engine-card__radio { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--muted-2); flex: none; }
+  .engine-card.is-selected { border-color: var(--accent); background: var(--accent-soft); }
+  .engine-card.is-selected .engine-card__radio { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 0 40%, transparent 42%); }
+  .engine-card__desc { font-size: 11.5px; color: var(--muted); }
+  .engine-card__phase { font-size: 10.5px; color: var(--muted-2); font-family: var(--font-mono); }
+
+  .cta-row { display: flex; align-items: center; gap: 12px; justify-content: flex-end; }
+
+  /* ===================== Screen 2 reuse (map+list) ===================== */
+  .s2-workspace { display: grid; grid-template-columns: 196px minmax(0,1.1fr) minmax(0,1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; min-height: 480px; }
+  @media (max-width: 900px) { .s2-workspace { grid-template-columns: 1fr; } }
+  .pane { background: var(--bg); display: flex; flex-direction: column; min-height: 0; }
+  .rail { background: var(--surface); padding: 12px 10px; gap: 4px; }
+  .rail__label { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-2); padding: 0 8px 8px; }
+  .rail__tab { display: flex; align-items: center; gap: 10px; width: 100%; border: none; background: none; text-align: left; padding: 9px 8px; border-radius: 6px; color: var(--ink); font-size: 13px; cursor: pointer; }
+  .rail__tab:hover { background: var(--surface-2); }
+  .rail__tab.is-active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .rail__dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--muted-2); }
+  .rail__tab[data-filter="client"] .rail__dot { background: var(--cat-client); }
+  .rail__tab[data-filter="pvz"] .rail__dot { background: var(--cat-pvz); }
+  .rail__tab[data-filter="seller_pickup"] .rail__dot { background: var(--cat-pickup); }
+  .rail__tab[data-filter="seller_return"] .rail__dot { background: var(--cat-return); }
+  .rail__tab-label { flex: 1; }
+  .rail__count { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); }
+  .rail__tab.is-active .rail__count { color: var(--accent); }
+
+  .pane__head { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px 7px; border-bottom: 1px solid var(--line); }
+  .pane__head h3 { margin: 0; font-size: 13px; font-weight: 650; }
+  .engine-source { font-size: 11px; color: var(--muted-2); }
+
+  .map-wrap { flex: 1; position: relative; min-height: 260px; background: var(--surface); }
+  .map-wrap svg { width: 100%; height: 100%; display: block; }
+  .zone { fill: var(--accent-soft); stroke: var(--accent-soft-line); stroke-width: 1.2; stroke-dasharray: 3 3; }
+  .zone-label { font-family: var(--font-mono); font-size: 7.5px; fill: var(--muted-2); letter-spacing: 0.04em; }
+  .river { fill: none; stroke: #7fa9c9; stroke-width: 7; opacity: 0.28; stroke-linecap: round; }
+  .route-path { fill: none; stroke-width: 2.2; opacity: 0.9; transition: opacity 0.15s ease, stroke-width 0.15s ease; }
+  .route-path.is-dim { opacity: 0.12; }
+  .marker-hub { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; }
+  .marker-pvz { fill: var(--cat-pvz); }
+  .marker-seller { fill: var(--cat-pickup); }
+  .marker-label { font-family: var(--font-ui); font-size: 7.5px; fill: var(--muted); }
+
+  .list-scroll { flex: 1; overflow: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); }
+  .route-card { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; background: var(--surface-2); display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+  .route-card.is-filtered-out { display: none; }
+  .route-card__id { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+  .route-card__exec { font-size: 12.5px; font-weight: 600; }
+  .route-card__meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .capbar { height: 6px; border-radius: 4px; background: var(--surface); overflow: hidden; border: 1px solid var(--line); margin-top: 5px; width: 120px; }
+  .capbar__fill { height: 100%; background: var(--ok); }
+  .capbar__fill.is-estimated { background: repeating-linear-gradient(45deg, var(--warn), var(--warn) 4px, transparent 4px, transparent 7px); }
+
+  /* ===================== Screen 3: редактирование ===================== */
+  .edit-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .edit-cap-text { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .edit-stops { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .edit-stop { display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-bottom: 1px solid var(--line); }
+  .edit-stop:last-child { border-bottom: none; }
+  .edit-stop.is-removed { opacity: 0.4; }
+  .edit-stop.is-removed .edit-stop__title { text-decoration: line-through; }
+  .edit-stop__title { font-size: 12.5px; font-weight: 600; flex: 1; }
+  .edit-stop__vol { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); width: 64px; }
+  .edit-stop__actions { display: flex; gap: 6px; align-items: center; }
+  .icon-btn { width: 27px; height: 27px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+  .icon-btn:hover { color: var(--critical); border-color: var(--critical); }
+  .move-select { font-size: 11.5px; padding: 5px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  .moved-tag { font-size: 10.5px; color: var(--accent); }
+
+  /* ===================== Screen 4: назначение ===================== */
+  .assign-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 780px) { .assign-columns { grid-template-columns: 1fr; } }
+  .assign-row { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+  .assign-row:last-child { border-bottom: none; }
+  .assign-row__id { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); width: 52px; }
+  .assign-row__name { font-size: 12.5px; font-weight: 600; flex: 1; }
+  .assign-row__meta { font-size: 11px; color: var(--muted); display: block; font-weight: 400; }
+
+  /* ===================== Screen 5: настройки точек ===================== */
+  table.settings-table th, table.settings-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 12.5px; vertical-align: middle; }
+  table.settings-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-2); font-weight: 600; }
+  table.settings-table tr:last-child td { border-bottom: none; }
+  .flag-pill { border: none; border-radius: 999px; padding: 4px 11px; font-size: 11.5px; font-weight: 650; cursor: pointer; }
+  .flag-pill--tk { background: color-mix(in srgb, var(--cat-pvz) 16%, var(--surface-2)); color: var(--cat-pvz); }
+  .flag-pill--courier { background: var(--accent-soft); color: var(--accent); }
+  .vol-trend { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .vol-trend__up { color: var(--warn); }
+
+  .footnote { padding: 12px 20px 18px; font-size: 11px; color: var(--muted-2); border-top: 1px solid var(--line); background: var(--surface); max-width: 1180px; margin: 0 auto; width: 100%; }
+  .footnote a { color: inherit; }
+
+  .nav-buttons { display: flex; justify-content: space-between; margin-top: auto; padding-top: 8px; }
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="topbar__row">
+      <div>
+        <span class="eyebrow">Домен «Доставка» · Концепт v1 · 5 сценариев</span>
+        <h1>Единая маршрутизация — путь диспетчера, Санкт‑Петербург</h1>
+      </div>
+      <span class="topbar__date">пт, 1 августа</span>
+    </div>
+    <nav class="stepper" id="stepper" aria-label="Сценарии">
+      <button class="stepper__item is-active" data-goto="1" type="button"><span class="stepper__num">1</span>Потребности и флот</button>
+      <button class="stepper__item" data-goto="2" type="button"><span class="stepper__num">2</span>Результат маршрутизации</button>
+      <button class="stepper__item" data-goto="3" type="button"><span class="stepper__num">3</span>Редактирование маршрута</button>
+      <button class="stepper__item" data-goto="4" type="button"><span class="stepper__num">4</span>Назначение исполнителей</button>
+      <button class="stepper__item" data-goto="5" type="button"><span class="stepper__num">5</span>Настройки точек</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ============ SCREEN 1 ============ -->
+    <section class="screen" data-screen="1">
+      <p class="screen__intro">Диспетчер садится планировать день. Видит <b>все логистические потребности</b> города и <b>флот</b>, которым располагает, — и решает, куда отправить всё на маршрутизацию.</p>
+
+      <div class="s1-grid">
+        <div class="panel">
+          <div class="panel__head"><h2 class="section-title">Логистические потребности на завтра</h2><span class="panel__sub">фильтр по источнику — как в разделе 2</span></div>
+          <div class="panel__body" style="overflow-x:auto">
+            <table class="demand-table">
+              <thead><tr><th>Источник</th><th>Что</th><th>Точек</th><th>Объём</th><th>Окно</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><span class="badge badge--client">Клиент</span></td>
+                  <td>Заказы на доставку</td>
+                  <td class="num">75</td>
+                  <td class="num demand-total">≈4.1 м³</td>
+                  <td class="num">09:00–17:00</td>
+                </tr>
+                <tr>
+                  <td><span class="badge badge--pvz">Довоз ПВЗ</span></td>
+                  <td>ТВХ Октябрьская → 4 ПВЗ</td>
+                  <td class="num">4</td>
+                  <td class="num demand-total">30.2 м³</td>
+                  <td class="num">волны 1–2</td>
+                </tr>
+                <tr>
+                  <td><span class="badge badge--pickup">Селлер · пикап</span></td>
+                  <td>8 селлеров на сегодня</td>
+                  <td class="num">8</td>
+                  <td class="num demand-total">частично <span class="demand-flag">3 без VPI</span></td>
+                  <td class="num">09:00–13:00</td>
+                </tr>
+                <tr>
+                  <td><span class="badge badge--return">Возврат селлеру</span></td>
+                  <td>2 селлера</td>
+                  <td class="num">2</td>
+                  <td class="num demand-total">9.4 м³</td>
+                  <td class="num">15:00–17:00</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2 class="section-title">Флот в распоряжении</h2><span class="panel__sub">настройки капасити</span></div>
+          <div class="panel__body">
+            <div class="fleet-list">
+              <div class="fleet-card"><span class="fleet-card__name">Курьеры на смене (СМЗ + штат)</span><span class="fleet-card__cap num">46 чел · ~1.5 м³ каждый</span></div>
+              <div class="fleet-card"><span class="fleet-card__name">ТК «Атлант»</span><span class="fleet-card__cap num">6 машин × 18 м³</span></div>
+              <div class="fleet-card"><span class="fleet-card__name">ТК «Вымпел»</span><span class="fleet-card__cap num">4 машины × 18 м³</span></div>
+              <div class="fleet-card"><span class="fleet-card__name">ТК «Меридиан»</span><span class="fleet-card__cap num">3 машины × 18 м³</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head"><h2 class="section-title">Отправить на маршрутизацию</h2><span class="panel__sub">выбор движка сейчас не стоит — показываем развилку на будущее (Фаза 4, tbd)</span></div>
+        <div class="panel__body" style="display:flex; flex-direction:column; gap:14px;">
+          <div class="engine-choice" id="engineChoice">
+            <button class="engine-card is-selected" data-engine="yandex" type="button">
+              <span class="engine-card__head"><span class="engine-card__radio"></span>Внешний маршрутизатор — Яндекс.Маршрутизация</span>
+              <span class="engine-card__desc">Выгружаем потребности и флот, получаем маршруты обратно. Текущий инструмент — работает во всех фазах 1–3, включая пилот единой точки маршрутизации.</span>
+              <span class="engine-card__phase">Фазы 1–3 · текущий инструмент</span>
+            </button>
+            <button class="engine-card" data-engine="own" type="button">
+              <span class="engine-card__head"><span class="engine-card__radio"></span>Собственный движок домена «Доставка»</span>
+              <span class="engine-card__desc">Не переключатель UI и не активный трек сейчас — отдельный R&amp;D-вопрос на кварталы/годы (constraint-solver с нуля). Решение, писать ли его или углублять параметры ЯМ, ещё не принято.</span>
+              <span class="engine-card__phase">Фаза 4 · открытый вопрос (tbd)</span>
+            </button>
+          </div>
+          <div class="cta-row">
+            <button class="btn btn-primary" id="sendToRouting" type="button">Отправить в варку маршрутов →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN 2 ============ -->
+    <section class="screen" data-screen="2" hidden>
+      <p class="screen__intro">Диспетчер получил результат маршрутизации — <b>готовые маршруты</b> с картой и показателями по каждому. Это уже реализовано в прошлой версии мокапа, здесь — как второй шаг пути.</p>
+
+      <div class="panel">
+        <div class="panel__head">
+          <h2 class="section-title">Готовые маршруты</h2>
+          <span class="engine-source" id="engineSourceLabel">источник: Яндекс.Маршрутизация</span>
+        </div>
+      </div>
+
+      <div class="s2-workspace">
+        <nav class="pane rail" id="rail" aria-label="Источники потребности">
+          <div class="rail__label">Источник</div>
+          <button class="rail__tab is-active" data-filter="all" type="button"><span class="rail__dot" style="background:var(--muted-2)"></span><span class="rail__tab-label">Все</span><span class="rail__count">9</span></button>
+          <button class="rail__tab" data-filter="client" type="button"><span class="rail__dot"></span><span class="rail__tab-label">Клиент</span><span class="rail__count">4</span></button>
+          <button class="rail__tab" data-filter="pvz" type="button"><span class="rail__dot"></span><span class="rail__tab-label">Довоз ПВЗ</span><span class="rail__count">2</span></button>
+          <button class="rail__tab" data-filter="seller_pickup" type="button"><span class="rail__dot"></span><span class="rail__tab-label">Селлер · пикап</span><span class="rail__count">2</span></button>
+          <button class="rail__tab" data-filter="seller_return" type="button"><span class="rail__dot"></span><span class="rail__tab-label">Возврат селлеру</span><span class="rail__count">1</span></button>
+        </nav>
+
+        <section class="pane">
+          <div class="pane__head"><h3>Карта</h3><span class="panel__sub">схематично</span></div>
+          <div class="map-wrap">
+            <svg viewBox="0 0 440 300" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Схематичная карта маршрутов">
+              <path class="river" d="M0,118 C80,140 140,86 205,108 C265,128 322,78 440,96" />
+              <polygon class="zone" points="18,55 112,46 122,110 62,132 12,108" /><text class="zone-label" x="30" y="70">ПРИМОРСКИЙ</text>
+              <polygon class="zone" points="150,118 212,108 232,160 190,192 138,176" /><text class="zone-label" x="160" y="150">ЦЕНТР</text>
+              <polygon class="zone" points="256,186 338,176 360,236 300,268 246,248" /><text class="zone-label" x="266" y="230">КУПЧИНО</text>
+              <g id="routes">
+                <polyline class="route-path" data-category="pvz" points="200,140 70,90 122,110" style="stroke:var(--cat-pvz)" />
+                <polyline class="route-path" data-category="pvz" points="200,140 300,230 235,222" style="stroke:var(--cat-pvz)" />
+                <polyline class="route-path" data-category="seller_pickup" points="200,140 170,162 190,180" style="stroke:var(--cat-pickup)" />
+                <polyline class="route-path" data-category="seller_pickup" points="320,90 250,140 210,150" style="stroke:var(--cat-pickup)" />
+                <polyline class="route-path" data-category="seller_return" points="200,140 250,140 300,230" style="stroke:var(--cat-return)" />
+                <polyline class="route-path" data-category="client" points="200,140 160,200 130,230 100,255" style="stroke:var(--cat-client)" />
+                <polyline class="route-path" data-category="client" points="200,140 240,190 270,220 305,250" style="stroke:var(--cat-client)" />
+                <polyline class="route-path" data-category="client" points="200,140 150,110 90,95 60,80" style="stroke:var(--cat-client)" />
+                <polyline class="route-path" data-category="client" points="320,90 360,140 390,190" style="stroke:var(--cat-client)" />
+              </g>
+              <rect class="marker-hub" x="192" y="132" width="16" height="16" rx="2" /><text class="marker-label" x="212" y="144">ТВХ Октябрьская</text>
+              <rect class="marker-hub" x="312" y="82" width="16" height="16" rx="2" /><text class="marker-label" x="332" y="94">ТВХ Парнас</text>
+              <circle class="marker-pvz" cx="70" cy="90" r="5" /><text class="marker-label" x="78" y="86">Приморский</text>
+              <circle class="marker-pvz" cx="235" cy="222" r="5" /><text class="marker-label" x="243" y="226">Купчино</text>
+              <circle class="marker-pvz" cx="122" cy="110" r="5" /><text class="marker-label" x="98" y="122">Ладожский</text>
+              <circle class="marker-pvz" cx="300" cy="230" r="5" /><text class="marker-label" x="308" y="242">Московский</text>
+            </svg>
+          </div>
+        </section>
+
+        <section class="pane">
+          <div class="pane__head"><h3>Маршруты</h3><span class="panel__sub">клик → сценарий 3</span></div>
+          <div class="list-scroll" id="routeList">
+            <button class="route-card" data-category="client" data-route="R-104" type="button" onclick="goToEdit('R-104')">
+              <span class="route-card__id">R-104</span>
+              <span><span class="route-card__exec">Соколов Д. · курьер</span><span class="route-card__meta">18 точек</span><span class="capbar"><span class="capbar__fill" style="width:80%"></span></span></span>
+              <span class="status-chip status-chip--ok">ок</span>
+            </button>
+            <button class="route-card" data-category="client" data-route="R-111" type="button" onclick="goToEdit('R-111')">
+              <span class="route-card__id">R-111</span>
+              <span><span class="route-card__exec">Гилёва Н. · микс</span><span class="route-card__meta">12 клиент + 2 довоз ПВЗ</span><span class="capbar"><span class="capbar__fill" style="width:87%"></span></span></span>
+              <span class="status-chip status-chip--ok">ок</span>
+            </button>
+            <button class="route-card" data-category="client" data-route="R-118" type="button" onclick="goToEdit('R-118')">
+              <span class="route-card__id">R-118</span>
+              <span><span class="route-card__exec">Петров И. · курьер</span><span class="route-card__meta">20 точек</span><span class="capbar"><span class="capbar__fill is-estimated" style="width:100%"></span></span></span>
+              <span class="status-chip status-chip--warn">без VPI</span>
+            </button>
+            <button class="route-card" data-category="pvz" data-route="R-201" type="button" onclick="goToEdit('R-201')">
+              <span class="route-card__id">R-201</span>
+              <span><span class="route-card__exec">ТК «Атлант»</span><span class="route-card__meta">2 точки · волна 1</span><span class="capbar"><span class="capbar__fill" style="width:79%"></span></span></span>
+              <span class="status-chip status-chip--ok">ок</span>
+            </button>
+            <button class="route-card" data-category="pvz" data-route="R-205" type="button" onclick="goToEdit('R-205')">
+              <span class="route-card__id">R-205</span>
+              <span><span class="route-card__exec">ТК «Вымпел»</span><span class="route-card__meta">2 точки · волна 2</span><span class="capbar"><span class="capbar__fill is-estimated" style="width:89%"></span></span></span>
+              <span class="status-chip status-chip--warn">без VPI</span>
+            </button>
+            <button class="route-card" data-category="seller_pickup" data-route="R-301" type="button" onclick="goToEdit('R-301')">
+              <span class="route-card__id">R-301</span>
+              <span><span class="route-card__exec">Данилова Е. · курьер</span><span class="route-card__meta">5 селлеров</span><span class="capbar"><span class="capbar__fill" style="width:73%"></span></span></span>
+              <span class="status-chip status-chip--ok">ок</span>
+            </button>
+            <button class="route-card" data-category="seller_pickup" data-route="R-304" type="button" onclick="goToEdit('R-304')">
+              <span class="route-card__id">R-304</span>
+              <span><span class="route-card__exec">ТК «Меридиан»</span><span class="route-card__meta">3 селлера</span><span class="capbar"><span class="capbar__fill is-estimated" style="width:94%"></span></span></span>
+              <span class="status-chip status-chip--warn">без VPI</span>
+            </button>
+            <button class="route-card" data-category="seller_return" data-route="R-410" type="button" onclick="goToEdit('R-410')">
+              <span class="route-card__id">R-410</span>
+              <span><span class="route-card__exec">ТК «Атлант» · возврат</span><span class="route-card__meta">2 точки</span><span class="capbar"><span class="capbar__fill" style="width:52%"></span></span></span>
+              <span class="status-chip status-chip--ok">ок</span>
+            </button>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN 3 ============ -->
+    <section class="screen" data-screen="3" hidden>
+      <p class="screen__intro">Диспетчер вносит правки в собранный маршрут — <b>удаляет точку</b> или <b>переносит её в другой маршрут</b>, до отправки на исполнение.</p>
+
+      <div class="panel">
+        <div class="panel__head edit-head">
+          <div>
+            <h2 class="section-title">Маршрут R-111 · Гилёва Н. · микс‑маршрут</h2>
+            <span class="panel__sub">клиент + довоз ПВЗ, слот 09:00–13:00</span>
+          </div>
+          <span class="edit-cap-text">Объём: <span id="editCapText">1.30</span> / 1.5 м³</span>
+        </div>
+        <div class="panel__body">
+          <ul class="edit-stops" id="editStops">
+            <li class="edit-stop" data-volume="0.35">
+              <span class="edit-stop__title">ПВЗ Приморский — довоз</span>
+              <span class="edit-stop__vol num">0.35 м³</span>
+              <span class="edit-stop__actions">
+                <select class="move-select"><option>Перенести в…</option><option>R-201</option><option>R-205</option></select>
+                <button class="icon-btn" title="Удалить точку" type="button">✕</button>
+              </span>
+            </li>
+            <li class="edit-stop" data-volume="0.30">
+              <span class="edit-stop__title">ПВЗ Ладожский — довоз</span>
+              <span class="edit-stop__vol num">0.30 м³</span>
+              <span class="edit-stop__actions">
+                <select class="move-select"><option>Перенести в…</option><option>R-201</option><option>R-205</option></select>
+                <button class="icon-btn" title="Удалить точку" type="button">✕</button>
+              </span>
+            </li>
+            <li class="edit-stop" data-volume="0.08">
+              <span class="edit-stop__title">Клиент — ул. Марата, 5</span>
+              <span class="edit-stop__vol num">0.08 м³</span>
+              <span class="edit-stop__actions">
+                <select class="move-select"><option>Перенести в…</option><option>R-104</option><option>R-107</option><option>R-118</option></select>
+                <button class="icon-btn" title="Удалить точку" type="button">✕</button>
+              </span>
+            </li>
+            <li class="edit-stop" data-volume="0.08">
+              <span class="edit-stop__title">Клиент — Лиговский пр‑т, 44</span>
+              <span class="edit-stop__vol num">0.08 м³</span>
+              <span class="edit-stop__actions">
+                <select class="move-select"><option>Перенести в…</option><option>R-104</option><option>R-107</option><option>R-118</option></select>
+                <button class="icon-btn" title="Удалить точку" type="button">✕</button>
+              </span>
+            </li>
+            <li class="edit-stop" data-volume="0.49">
+              <span class="edit-stop__title">+ ещё 10 клиентских точек в этом слоте</span>
+              <span class="edit-stop__vol num">0.49 м³</span>
+              <span class="edit-stop__actions">
+                <select class="move-select" disabled><option>агрегат</option></select>
+                <button class="icon-btn" title="Разбить на точки, чтобы редактировать поштучно" type="button" disabled>⋯</button>
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN 4 ============ -->
+    <section class="screen" data-screen="4" hidden>
+      <p class="screen__intro">Готовые (и, при необходимости, отредактированные) маршруты уходят на назначение — <b>транспортным компаниям</b> заявкой на тачку и водителя, <b>курьерке</b> — на назначение конкретного исполнителя.</p>
+
+      <div class="assign-columns">
+        <div class="panel">
+          <div class="panel__head"><h2 class="section-title">→ Транспортные компании</h2><button class="btn btn-sm" id="sendAllTk" type="button">Отправить все</button></div>
+          <div class="panel__body">
+            <div class="assign-row"><span class="assign-row__id">R-201</span><span class="assign-row__name">ТК «Атлант»<span class="assign-row__meta">2 точки · волна 1</span></span><button class="btn btn-sm assign-send" type="button">Отправить</button></div>
+            <div class="assign-row"><span class="assign-row__id">R-205</span><span class="assign-row__name">ТК «Вымпел»<span class="assign-row__meta">2 точки · волна 2</span></span><button class="btn btn-sm assign-send" type="button">Отправить</button></div>
+            <div class="assign-row"><span class="assign-row__id">R-304</span><span class="assign-row__name">ТК «Меридиан»<span class="assign-row__meta">3 селлера</span></span><button class="btn btn-sm assign-send" type="button">Отправить</button></div>
+            <div class="assign-row"><span class="assign-row__id">R-410</span><span class="assign-row__name">ТК «Атлант» · возврат<span class="assign-row__meta">2 точки</span></span><button class="btn btn-sm assign-send" type="button">Отправить</button></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2 class="section-title">→ Курьерка</h2><button class="btn btn-sm" id="sendAllCourier" type="button">Отправить все</button></div>
+          <div class="panel__body">
+            <div class="assign-row"><span class="assign-row__id">R-104</span><span class="assign-row__name">Соколов Д.<span class="assign-row__meta">18 точек · слот 10:00–14:00</span></span><button class="btn btn-sm assign-send" type="button">Отправить</button></div>
+            <div class="assign-row"><span class="assign-row__id">R-107</span><span class="assign-row__name">Ахметов Р.<span class="assign-row__meta">22 точки · слот 12:00–16:00</span></span><button class="btn btn-sm assign-send" type="button">Отправить</button></div>
+            <div class="assign-row"><span class="assign-row__id">R-111</span><span class="assign-row__name">Гилёва Н. · микс<span class="assign-row__meta">14 точек · слот 09:00–13:00</span></span><button class="btn btn-sm assign-send" type="button">Отправить</button></div>
+            <div class="assign-row"><span class="assign-row__id">R-301</span><span class="assign-row__name">Данилова Е.<span class="assign-row__meta">5 селлеров</span></span><button class="btn btn-sm assign-send" type="button">Отправить</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN 5 ============ -->
+    <section class="screen" data-screen="5" hidden>
+      <p class="screen__intro">Настройки точек возможной доставки — кто по умолчанию везёт каждого селлера и каждый ПВЗ, и где рост объёма требует внимания диспетчера. Эти настройки диспетчер задаёт заранее, до начала дня — логически они предшествуют сценарию 1, но вынесены отдельным экраном, чтобы не перегружать первый шаг. Это и есть предметный результат <b>Фазы 1</b> (водораздел курьер/магистраль по селлеру) и <b>Фазы 2</b> (разделение ПВЗ по типу логистики) из раздела 4 концепта — не абстракция, а конкретный экран, который появится раньше остальных.</p>
+
+      <div class="panel">
+        <div class="panel__head"><h2 class="section-title">Общие настройки маршрутизации</h2><span class="panel__sub">закрывает боль AS‑IS, раздел 2.1 концепта</span></div>
+        <div class="panel__body">
+          <div class="fleet-card"><span class="fleet-card__name">Исключать СМЗ из плотных ПВЗ‑маршрутов при расчёте</span><button class="flag-pill flag-pill--courier toggle-onoff" type="button">Включено</button></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head"><h2 class="section-title">Селлеры</h2><span class="panel__sub">признак кликабелен — переключает ТК / курьер</span></div>
+        <div class="panel__body" style="overflow-x:auto">
+          <table class="settings-table">
+            <thead><tr><th>Селлер</th><th>Признак пикапа</th><th>Ср. объём, 7 дней</th><th>Статус</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>«Одетто»</td>
+                <td><button class="flag-pill flag-pill--courier" type="button">Курьер</button></td>
+                <td class="vol-trend">1.3 м³/сут → <span class="vol-trend__up">3.4 м³/сут</span></td>
+                <td><span class="status-chip status-chip--warn">Превышение — рассмотреть передачу в ТК</span></td>
+              </tr>
+              <tr>
+                <td>«Швейный дом №3»</td>
+                <td><button class="flag-pill flag-pill--tk" type="button">ТК</button></td>
+                <td class="vol-trend">8.1 м³/сут</td>
+                <td><span class="status-chip status-chip--ok">В норме</span></td>
+              </tr>
+              <tr>
+                <td>«Стиль Групп»</td>
+                <td><button class="flag-pill flag-pill--courier" type="button">Курьер</button></td>
+                <td class="vol-trend">0.6 м³/сут</td>
+                <td><span class="status-chip status-chip--ok">В норме</span></td>
+              </tr>
+              <tr>
+                <td>«Фабрика Трендс»</td>
+                <td><button class="flag-pill flag-pill--tk" type="button">ТК</button></td>
+                <td class="vol-trend">9.4 м³/сут</td>
+                <td><span class="status-chip status-chip--ok">В норме</span></td>
+              </tr>
+              <tr>
+                <td>«Wear Line»</td>
+                <td><button class="flag-pill flag-pill--courier" type="button">Курьер</button></td>
+                <td class="vol-trend">0.4 м³/сут</td>
+                <td><span class="status-chip status-chip--ok">В норме</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head"><h2 class="section-title">ПВЗ</h2><span class="panel__sub">кто возит довоз</span></div>
+        <div class="panel__body" style="overflow-x:auto">
+          <table class="settings-table">
+            <thead><tr><th>ПВЗ</th><th>Кто возит</th><th>Ср. объём/волну</th><th>Статус</th></tr></thead>
+            <tbody>
+              <tr><td>Приморский</td><td><button class="flag-pill flag-pill--tk" type="button">ТК</button></td><td class="vol-trend">14 м³</td><td><span class="status-chip status-chip--ok">В норме</span></td></tr>
+              <tr><td>Ладожский</td><td><button class="flag-pill flag-pill--tk" type="button">ТК</button></td><td class="vol-trend">12 м³</td><td><span class="status-chip status-chip--ok">В норме</span></td></tr>
+              <tr><td>Купчино</td><td><button class="flag-pill flag-pill--tk" type="button">ТК</button></td><td class="vol-trend">16 м³</td><td><span class="status-chip status-chip--warn">Капасити волны 2 регулярно исчерпан</span></td></tr>
+              <tr><td>Московский</td><td><button class="flag-pill flag-pill--tk" type="button">ТК</button></td><td class="vol-trend">10 м³</td><td><span class="status-chip status-chip--ok">В норме</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <p class="footnote">Кликабельный мокап пяти сценариев работы диспетчера — иллюстрация к <a href="unified_routing_concept.md">unified_routing_concept.md</a>. Числа и названия иллюстративные.</p>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+  (function () {
+    var screens = Array.prototype.slice.call(document.querySelectorAll('.screen'));
+    var stepperItems = Array.prototype.slice.call(document.querySelectorAll('.stepper__item'));
+    var toastEl = document.getElementById('toast');
+    var toastTimer;
+
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('is-visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toastEl.classList.remove('is-visible'); }, 2600);
+    }
+
+    function goTo(n) {
+      screens.forEach(function (s) { s.hidden = s.dataset.screen !== String(n); });
+      stepperItems.forEach(function (b) { b.classList.toggle('is-active', b.dataset.goto === String(n)); });
+      window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+    window.goToEdit = function (routeId) { goTo(3); showToast('Открыт для редактирования: ' + routeId); };
+
+    document.getElementById('stepper').addEventListener('click', function (e) {
+      var btn = e.target.closest('.stepper__item');
+      if (btn) goTo(btn.dataset.goto);
+    });
+
+    /* Screen 1 — engine choice */
+    var engineChoice = document.getElementById('engineChoice');
+    var selectedEngine = 'yandex';
+    engineChoice.addEventListener('click', function (e) {
+      var card = e.target.closest('.engine-card');
+      if (!card) return;
+      selectedEngine = card.dataset.engine;
+      Array.prototype.forEach.call(engineChoice.querySelectorAll('.engine-card'), function (c) {
+        c.classList.toggle('is-selected', c === card);
+      });
+    });
+    document.getElementById('sendToRouting').addEventListener('click', function () {
+      var label = selectedEngine === 'yandex' ? 'Яндекс.Маршрутизация' : 'собственный движок домена «Доставка»';
+      document.getElementById('engineSourceLabel').textContent = 'источник: ' + label;
+      showToast('Маршруты сформированы — ' + label);
+      goTo(2);
+    });
+
+    /* Screen 2 — filters */
+    var rail = document.getElementById('rail');
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.route-card'));
+    var paths = Array.prototype.slice.call(document.querySelectorAll('#routes .route-path'));
+    if (rail) {
+      rail.addEventListener('click', function (e) {
+        var btn = e.target.closest('.rail__tab');
+        if (!btn) return;
+        Array.prototype.forEach.call(rail.querySelectorAll('.rail__tab'), function (t) { t.classList.toggle('is-active', t === btn); });
+        var cat = btn.dataset.filter;
+        cards.forEach(function (c) { c.classList.toggle('is-filtered-out', cat !== 'all' && c.dataset.category !== cat); });
+        paths.forEach(function (p) { p.classList.toggle('is-dim', cat !== 'all' && p.dataset.category !== cat); });
+      });
+    }
+
+    /* Screen 3 — edit stops */
+    var editStops = document.getElementById('editStops');
+    var editCapText = document.getElementById('editCapText');
+    function recomputeVolume() {
+      var total = 0;
+      editStops.querySelectorAll('.edit-stop').forEach(function (li) {
+        if (!li.classList.contains('is-removed')) total += parseFloat(li.dataset.volume) || 0;
+      });
+      editCapText.textContent = total.toFixed(2);
+    }
+    editStops.addEventListener('click', function (e) {
+      var delBtn = e.target.closest('.icon-btn');
+      if (delBtn && !delBtn.disabled) {
+        var li = delBtn.closest('.edit-stop');
+        li.classList.toggle('is-removed');
+        recomputeVolume();
+      }
+    });
+    editStops.addEventListener('change', function (e) {
+      var select = e.target.closest('.move-select');
+      if (!select || !select.value || select.value === 'Перенести в…') return;
+      var li = select.closest('.edit-stop');
+      li.classList.add('is-removed');
+      var tag = document.createElement('span');
+      tag.className = 'moved-tag';
+      tag.textContent = ' → перенесено в ' + select.value;
+      li.querySelector('.edit-stop__title').appendChild(tag);
+      recomputeVolume();
+      showToast('Точка перенесена в ' + select.value);
+    });
+
+    /* Screen 4 — assignment */
+    document.querySelectorAll('.assign-send').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var row = btn.closest('.assign-row');
+        var id = row.querySelector('.assign-row__id').textContent.trim();
+        btn.replaceWith(Object.assign(document.createElement('span'), { className: 'status-chip status-chip--ok', textContent: 'Отправлено ✓' }));
+        showToast(id + ' отправлен на исполнение');
+      });
+    });
+    var sendAllTk = document.getElementById('sendAllTk');
+    if (sendAllTk) sendAllTk.addEventListener('click', function () {
+      document.querySelectorAll('.assign-columns .panel:first-child .assign-send').forEach(function (b) { b.click(); });
+    });
+    var sendAllCourier = document.getElementById('sendAllCourier');
+    if (sendAllCourier) sendAllCourier.addEventListener('click', function () {
+      document.querySelectorAll('.assign-columns .panel:last-child .assign-send').forEach(function (b) { b.click(); });
+    });
+
+    /* Screen 5 — flag toggle */
+    document.querySelectorAll('.flag-pill:not(.toggle-onoff)').forEach(function (pill) {
+      pill.addEventListener('click', function () {
+        var toTk = pill.classList.contains('flag-pill--courier');
+        pill.classList.toggle('flag-pill--tk', toTk);
+        pill.classList.toggle('flag-pill--courier', !toTk);
+        pill.textContent = toTk ? 'ТК' : 'Курьер';
+      });
+    });
+    document.querySelectorAll('.toggle-onoff').forEach(function (pill) {
+      pill.addEventListener('click', function () {
+        var on = pill.textContent.trim() === 'Включено';
+        pill.classList.toggle('flag-pill--courier', !on);
+        pill.classList.toggle('flag-pill--tk', on);
+        pill.textContent = on ? 'Выключено' : 'Включено';
+      });
+    });
+  })();
+</script>
