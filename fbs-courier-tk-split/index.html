@@ -1,0 +1,925 @@
+<title>Сегментация пикапа: курьер vs ТК</title>
+<style>
+  :root {
+    --bg: #eef1f0; --surface: #ffffff; --surface-2: #f5f7f6;
+    --ink: #17222a; --muted: #566169; --muted-2: #7c8790; --line: #d9dedc;
+    --accent: #146c6c; --accent-ink: #ffffff; --accent-soft: #dcecea; --accent-soft-line: #b7d6d2;
+    --ok: #2e7d46; --ok-soft: #e1f3e6;
+    --warn: #9a6a0c; --warn-soft: #fbedd3;
+    --critical: #b23a3a; --critical-soft: #f8e2e0;
+    --cat-courier: #7a4fa3; --cat-courier-soft: #efe6f5;
+    --cat-tk: #3d5a80; --cat-tk-soft: #e5eaf1;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+    --radius: 8px;
+    --shadow: 0 1px 2px rgba(23,34,42,0.06), 0 4px 14px rgba(23,34,42,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12181b; --surface: #1a2226; --surface-2: #202a2f;
+      --ink: #e7edec; --muted: #a3aeb3; --muted-2: #7e8a90; --line: #2c383d;
+      --accent: #5bbcb4; --accent-ink: #0d1a19; --accent-soft: #1e3634; --accent-soft-line: #2f5652;
+      --ok: #6fc98a; --ok-soft: #1c3524;
+      --warn: #e3ab52; --warn-soft: #3a2d16;
+      --critical: #e2837c; --critical-soft: #3a2320;
+      --cat-courier: #b494dd; --cat-courier-soft: #2c2438;
+      --cat-tk: #7fa0cf; --cat-tk-soft: #1f2a38;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 18px rgba(0,0,0,0.28);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12181b; --surface: #1a2226; --surface-2: #202a2f;
+    --ink: #e7edec; --muted: #a3aeb3; --muted-2: #7e8a90; --line: #2c383d;
+    --accent: #5bbcb4; --accent-ink: #0d1a19; --accent-soft: #1e3634; --accent-soft-line: #2f5652;
+    --ok: #6fc98a; --ok-soft: #1c3524;
+    --warn: #e3ab52; --warn-soft: #3a2d16;
+    --critical: #e2837c; --critical-soft: #3a2320;
+    --cat-courier: #b494dd; --cat-courier-soft: #2c2438;
+    --cat-tk: #7fa0cf; --cat-tk-soft: #1f2a38;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 18px rgba(0,0,0,0.28);
+  }
+  :root[data-theme="light"] {
+    --bg: #eef1f0; --surface: #ffffff; --surface-2: #f5f7f6;
+    --ink: #17222a; --muted: #566169; --muted-2: #7c8790; --line: #d9dedc;
+    --accent: #146c6c; --accent-ink: #ffffff; --accent-soft: #dcecea; --accent-soft-line: #b7d6d2;
+    --ok: #2e7d46; --ok-soft: #e1f3e6;
+    --warn: #9a6a0c; --warn-soft: #fbedd3;
+    --critical: #b23a3a; --critical-soft: #f8e2e0;
+    --cat-courier: #7a4fa3; --cat-courier-soft: #efe6f5;
+    --cat-tk: #3d5a80; --cat-tk-soft: #e5eaf1;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  button, select { font-family: inherit; }
+  table { border-collapse: collapse; width: 100%; }
+  ::selection { background: var(--accent-soft-line); }
+
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--line); padding: 14px 20px 0; }
+  .topbar__row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 20px; padding-bottom: 12px; }
+  .eyebrow { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted-2); }
+  .topbar h1 { margin: 2px 0 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; text-wrap: balance; }
+  .topbar__date { margin-left: auto; font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .stepper { display: flex; overflow-x: auto; gap: 2px; }
+  .stepper__item {
+    display: flex; align-items: center; gap: 8px;
+    border: none; background: none; cursor: pointer;
+    padding: 10px 14px 12px; white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    color: var(--muted); font-size: 12.5px;
+  }
+  .stepper__item:hover { color: var(--ink); }
+  .stepper__item.is-active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 650; }
+  .stepper__num {
+    width: 19px; height: 19px; border-radius: 50%; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 10.5px;
+    background: var(--surface-2); color: var(--muted);
+  }
+  .stepper__item.is-active .stepper__num { background: var(--accent); color: var(--accent-ink); }
+
+  main { flex: 1; display: flex; flex-direction: column; }
+  .screen { flex: 1; display: flex; flex-direction: column; padding: 18px 20px 24px; gap: 14px; max-width: 1220px; width: 100%; margin: 0 auto; }
+  .screen[hidden] { display: none; }
+
+  .screen__intro { font-size: 12.5px; color: var(--muted); max-width: 76ch; }
+  .screen__intro b { color: var(--ink); }
+
+  h2.section-title { margin: 0; font-size: 13px; font-weight: 650; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .panel__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+  .panel__sub { font-size: 11.5px; color: var(--muted-2); }
+  .panel__body { padding: 12px 14px; }
+
+  .btn {
+    font-size: 12.5px; font-weight: 600; padding: 8px 14px; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer;
+  }
+  .btn:hover { border-color: var(--muted-2); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn-primary:hover { filter: brightness(1.05); }
+  .btn-primary:disabled, .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-ghost { background: none; }
+  .btn-sm { padding: 5px 10px; font-size: 11.5px; }
+  .btn-warn { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 5px; font-size: 10.5px; font-weight: 650; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); }
+  .badge--courier { color: var(--cat-courier); background: var(--cat-courier-soft); border-color: color-mix(in srgb, var(--cat-courier) 35%, var(--line)); }
+  .badge--tk { color: var(--cat-tk); background: var(--cat-tk-soft); border-color: color-mix(in srgb, var(--cat-tk) 35%, var(--line)); }
+
+  .status-chip { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 650; white-space: nowrap; }
+  .status-chip--ok { background: var(--ok-soft); color: var(--ok); }
+  .status-chip--warn { background: var(--warn-soft); color: var(--warn); }
+  .status-chip--critical { background: var(--critical-soft); color: var(--critical); }
+  .status-chip--neutral { background: var(--surface-2); color: var(--muted); }
+
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  /* ---------- Scenario A: settings, master-detail ---------- */
+  .settings-layout { display: grid; grid-template-columns: 320px 1fr; gap: 14px; align-items: start; flex: 1; min-height: 0; }
+  @media (max-width: 860px) { .settings-layout { grid-template-columns: 1fr; } }
+
+  .seller-search { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .seller-search input {
+    width: 100%; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--surface-2); color: var(--ink); font-size: 12.5px;
+  }
+  .seller-search input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .filter-chips { display: flex; gap: 6px; padding: 8px 12px 10px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+  .filter-chip {
+    font-size: 11px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--surface-2); color: var(--muted); cursor: pointer;
+  }
+  .filter-chip.is-active { background: var(--accent-soft); border-color: var(--accent-soft-line); color: var(--accent); font-weight: 650; }
+
+  .seller-list { list-style: none; margin: 0; padding: 0; max-height: 560px; overflow-y: auto; }
+  .seller-row {
+    display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-bottom: 1px solid var(--line);
+    cursor: pointer; background: var(--surface);
+  }
+  .seller-row:last-child { border-bottom: none; }
+  .seller-row:hover { background: var(--surface-2); }
+  .seller-row.is-selected { background: var(--accent-soft); }
+  .seller-row__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .seller-row__name { font-size: 12.5px; font-weight: 650; }
+  .seller-row__meta { font-size: 11px; color: var(--muted-2); display: flex; gap: 8px; }
+  .seller-row__flag { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); flex: none; box-shadow: 0 0 0 3px var(--warn-soft); }
+
+  .detail { display: flex; flex-direction: column; gap: 12px; }
+  .detail__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .detail__title { font-size: 15px; font-weight: 650; }
+  .detail__meta { font-size: 11.5px; color: var(--muted-2); margin-top: 2px; }
+
+  .warn-banner {
+    display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: var(--radius);
+    background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--warn-soft));
+  }
+  .warn-banner__icon { font-size: 15px; line-height: 1.3; }
+  .warn-banner__body { flex: 1; font-size: 12.5px; color: var(--ink); }
+  .warn-banner__title { font-weight: 650; color: var(--warn); margin-bottom: 2px; }
+  .warn-banner__actions { display: flex; gap: 8px; margin-top: 9px; }
+
+  .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 640px) { .metric-grid { grid-template-columns: 1fr; } }
+  .metric-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 13px; }
+  .metric-card__label { font-size: 10.5px; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.05em; }
+  .metric-card__value { font-size: 20px; font-weight: 650; margin-top: 4px; font-family: var(--font-mono); }
+  .metric-card__hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  .spark { display: flex; align-items: flex-end; gap: 3px; height: 46px; margin-top: 10px; position: relative; }
+  .spark__bar { flex: 1; background: var(--accent-soft-line); border-radius: 2px 2px 0 0; min-height: 2px; }
+  .spark__bar.is-over { background: var(--cat-tk); }
+  .spark__threshold { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--muted-2); }
+  .spark__threshold-label { position: absolute; right: 0; top: -14px; font-size: 9.5px; color: var(--muted-2); font-family: var(--font-mono); }
+
+  .geo-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+  .geo-row:last-child { border-bottom: none; }
+  .geo-row__label { color: var(--muted); }
+
+  .history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .history-item { font-size: 12px; color: var(--muted); display: flex; gap: 8px; }
+  .history-item time { font-family: var(--font-mono); font-size: 11px; color: var(--muted-2); flex: none; }
+
+  /* ---------- Scenario B: daily split table ---------- */
+  .summary-bar { display: flex; align-items: center; gap: 18px; padding: 12px 14px; flex-wrap: wrap; }
+  .summary-stat { display: flex; flex-direction: column; gap: 2px; }
+  .summary-stat__value { font-size: 18px; font-weight: 650; font-family: var(--font-mono); }
+  .summary-stat__label { font-size: 10.5px; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.05em; }
+  .summary-stat--courier .summary-stat__value { color: var(--cat-courier); }
+  .summary-stat--tk .summary-stat__value { color: var(--cat-tk); }
+  .summary-stat--edited .summary-stat__value { color: var(--warn); }
+  .summary-spacer { flex: 1; }
+
+  .bulk-bar {
+    display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+    background: var(--accent-soft); border-bottom: 1px solid var(--accent-soft-line);
+    font-size: 12.5px;
+  }
+  .bulk-bar[hidden] { display: none; }
+  .bulk-bar__count { font-weight: 650; color: var(--accent); white-space: nowrap; }
+  .bulk-bar__spacer { flex: 1; }
+
+  .split-table th, .split-table td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); font-size: 12.5px; vertical-align: middle; }
+  .split-table .col-check { width: 34px; padding-right: 0; }
+  .split-table input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+  .split-table tbody tr.is-selected { background: var(--accent-soft); }
+  .split-table thead th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-2); background: var(--surface-2); font-weight: 650; }
+  .split-table tbody tr:hover { background: var(--surface-2); }
+  .split-table tbody tr:last-child td { border-bottom: none; }
+  .split-table .col-num { text-align: right; }
+
+  .seller-cell { display: flex; flex-direction: column; gap: 2px; }
+  .seller-cell__name { font-weight: 600; }
+  .seller-cell__wh { font-size: 11px; color: var(--muted-2); }
+
+  .type-select {
+    padding: 5px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface);
+    color: var(--ink); font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .type-select.val-courier { color: var(--cat-courier); border-color: color-mix(in srgb, var(--cat-courier) 40%, var(--line)); }
+  .type-select.val-tk { color: var(--cat-tk); border-color: color-mix(in srgb, var(--cat-tk) 40%, var(--line)); }
+
+  .default-badge { font-size: 10.5px; color: var(--muted-2); }
+  .row-note { font-size: 10.5px; color: var(--warn); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+
+  .table-scroll { overflow-x: auto; }
+
+  .action-footer {
+    position: sticky; bottom: 0; display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+    background: var(--surface); border-top: 1px solid var(--line); border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .action-footer__hint { font-size: 11.5px; color: var(--muted); flex: 1; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(8px);
+    background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px;
+    font-size: 12.5px; box-shadow: var(--shadow); opacity: 0; pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease; z-index: 50; max-width: 420px; text-align: center;
+  }
+  .toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="topbar__row">
+      <div>
+        <div class="eyebrow">Курьерский домен · Сервис «водораздела»</div>
+        <h1>Сегментация FBS-пикапа: курьер vs ТК</h1>
+      </div>
+      <div class="topbar__date">Сегодня — 03.08.2026</div>
+    </div>
+    <nav class="stepper" aria-label="Сценарии">
+      <button class="stepper__item is-active" data-screen="settings">
+        <span class="stepper__num">A</span> Настройки пикапа по селлеру
+      </button>
+      <button class="stepper__item" data-screen="daily">
+        <span class="stepper__num">B</span> Ежедневное разделение потоков
+      </button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ============ SCREEN A — SETTINGS ============ -->
+    <section class="screen" id="screen-settings">
+      <p class="screen__intro">
+        Управляемый сегмент «Курьерский пикап» — здесь фиксируется <b>дефолтный</b> тип пикапа по каждому
+        селлеру на основе медианы отгрузок и гео-покрытия курьерки. Это стартовое распределение, которое
+        ежедневный сервис «водораздела» (сценарий B) может скорректировать по факту дня.
+      </p>
+
+      <div class="settings-layout">
+        <div class="panel">
+          <div class="seller-search">
+            <input type="text" id="seller-search-input" placeholder="Поиск селлера…" aria-label="Поиск селлера">
+          </div>
+          <div class="filter-chips" role="group" aria-label="Фильтр по типу пикапа">
+            <button class="filter-chip is-active" data-filter="all">Все · 8</button>
+            <button class="filter-chip" data-filter="courier">Курьер · 4</button>
+            <button class="filter-chip" data-filter="tk">ТК · 3</button>
+            <button class="filter-chip" data-filter="attention">Требует внимания · 2</button>
+          </div>
+          <ul class="seller-list" id="seller-list"></ul>
+        </div>
+
+        <div class="detail panel" id="seller-detail">
+          <!-- filled by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN B — DAILY SPLIT ============ -->
+    <section class="screen" id="screen-daily" hidden>
+      <p class="screen__intro">
+        Заявки на pick-up, полученные из WDM на сегодня. Столбец «Дефолт» — решение сервиса «водораздела»
+        по правилам сегмента (раздел 3.1 PRD). Диспетчер может вручную переопределить итог по каждой строке —
+        например, если маршрут курьера в этом районе уже заполнен.
+      </p>
+
+      <div class="panel">
+        <div class="summary-bar">
+          <div class="summary-stat">
+            <span class="summary-stat__value" id="stat-total">10</span>
+            <span class="summary-stat__label">Всего заявок</span>
+          </div>
+          <div class="summary-stat summary-stat--courier">
+            <span class="summary-stat__value" id="stat-courier">6</span>
+            <span class="summary-stat__label">Едет курьер</span>
+          </div>
+          <div class="summary-stat summary-stat--tk">
+            <span class="summary-stat__value" id="stat-tk">4</span>
+            <span class="summary-stat__label">Едет ТК</span>
+          </div>
+          <div class="summary-stat summary-stat--edited">
+            <span class="summary-stat__value" id="stat-edited">0</span>
+            <span class="summary-stat__label">Изменено вручную</span>
+          </div>
+          <div class="summary-spacer"></div>
+          <span class="status-chip status-chip--warn" id="stat-attention-chip">1 требует проверки</span>
+        </div>
+
+        <div class="bulk-bar" id="bulk-bar" hidden>
+          <span class="bulk-bar__count" id="bulk-bar-count">Выбрано 0</span>
+          <span class="bulk-bar__spacer"></span>
+          <button class="btn btn-sm" id="bulk-to-courier">Перенести в курьер</button>
+          <button class="btn btn-sm" id="bulk-to-tk">Перенести в ТК</button>
+          <button class="btn btn-ghost btn-sm" id="bulk-clear">Снять выбор</button>
+        </div>
+
+        <div class="table-scroll">
+          <table class="split-table">
+            <thead>
+              <tr>
+                <th class="col-check"><input type="checkbox" id="select-all-checkbox" aria-label="Выбрать все заявки"></th>
+                <th>Селлер</th>
+                <th>Заказов</th>
+                <th>Объём (расч.)</th>
+                <th>Сегмент</th>
+                <th>Итог на сегодня</th>
+              </tr>
+            </thead>
+            <tbody id="daily-table-body"></tbody>
+          </table>
+        </div>
+
+        <div class="action-footer">
+          <span class="action-footer__hint" id="footer-hint">
+            Разбивка на 03.08 ещё не отправлена в системы исполнителей.
+          </span>
+          <button class="btn" id="btn-reset">Сбросить к дефолту</button>
+          <button class="btn btn-primary" id="btn-send">Отправить разделение</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var THRESHOLD = 50;
+
+  var sellers = [
+    {
+      id: "antaju", name: "Antaju MP Cd", city: "Москва", wh: "ТВХ Чехов",
+      type: "courier", median: 34, orders7d: [28, 31, 36, 30, 40, 33, 29],
+      geoOk: true, geoZone: "Москва-Юг", reviewDate: "17.08.2026",
+      history: [["14.07.2026", "ТК → Курьер, автоматически по медиане"]]
+    },
+    {
+      id: "jeans", name: "Jeans MP Cd", city: "Губкин", wh: "ТВХ Губкин",
+      type: "courier", median: 41, orders7d: [38, 44, 39, 45, 42, 40, 37],
+      geoOk: true, geoZone: "Губкин-Центр", reviewDate: "17.08.2026",
+      history: [["30.06.2026", "Заведён как новый селлер — курьер по умолчанию"]]
+    },
+    {
+      id: "arttextil", name: "АртТекстиль", city: "Красногорск", wh: "FC Софьино",
+      type: "tk", median: 68, orders7d: [61, 70, 65, 74, 69, 63, 72],
+      geoOk: true, geoZone: "Красногорск", reviewDate: "17.08.2026",
+      history: [["21.07.2026", "Курьер → ТК, медиана превысила лимит 50"]]
+    },
+    {
+      id: "boutique", name: "Boutique Coba", city: "Балашиха", wh: "ТВХ Балашиха",
+      type: "courier", median: 29, orders7d: [25, 31, 27, 33, 26, 30, 32],
+      geoOk: false, geoZone: "Балашиха-Восток", nearestZone: "Балашиха-Центр (12 км)",
+      reviewDate: "17.08.2026", attention: true,
+      history: [["10.07.2026", "Заведён как новый селлер — курьер по умолчанию"]]
+    },
+    {
+      id: "chevonne", name: "Chevonne Style", city: "Мытищи", wh: "ТВХ Мытищи",
+      type: "courier", median: 12, orders7d: [10, 14, 9, 15, 11, 13, 12],
+      geoOk: true, geoZone: "Мытищи-Центр", reviewDate: "17.08.2026",
+      history: [["02.06.2026", "Заведён как новый селлер — курьер по умолчанию"]]
+    },
+    {
+      id: "wearhouse", name: "WearHouse RU", city: "Реутов", wh: "FC Софьино",
+      type: "tk", median: 95, orders7d: [88, 97, 91, 102, 94, 89, 99],
+      geoOk: true, geoZone: "Реутов", reviewDate: "17.08.2026",
+      history: [["05.05.2026", "Крупный заходящий селлер — сразу заведён на ТК"]]
+    },
+    {
+      id: "onyx", name: "Onyx Trade", city: "Москва", wh: "ТВХ Чехов",
+      type: "courier", median: 47, orders7d: [42, 51, 46, 53, 44, 48, 45],
+      geoOk: true, geoZone: "Москва-Юг", reviewDate: "10.08.2026", attention: true,
+      history: [["27.07.2026", "Медиана приблизилась к порогу 50 — назначена ручная проверка склада"]]
+    },
+    {
+      id: "cocoon", name: "Cocoon Kids", city: "Люберцы", wh: "ТВХ Люберцы",
+      type: "courier", median: 22, orders7d: [19, 24, 20, 25, 21, 23, 22],
+      geoOk: true, geoZone: "Люберцы", reviewDate: "17.08.2026",
+      history: [["18.06.2026", "Заведён как новый селлер — курьер по умолчанию"]]
+    }
+  ];
+
+  var dailyRows = [
+    { seller: "antaju", orders: 14, volume: "1,9 куб", segment: "courier", flagged: false },
+    { seller: "jeans", orders: 18, volume: "2,3 куб", segment: "courier", flagged: false },
+    { seller: "chevonne", orders: 5, volume: "0,6 куб", segment: "courier", flagged: false },
+    { seller: "cocoon", orders: 9, volume: "1,1 куб", segment: "courier", flagged: false },
+    { seller: "boutique", orders: 11, volume: "1,4 куб", segment: "tk", flagged: false, note: "переопределено — вне зоны курьерки" },
+    { seller: "onyx", orders: 19, volume: "2,6 куб", segment: "courier", flagged: true, note: "пограничный кейс — нужна проверка склада" },
+    { seller: "arttextil", orders: 27, volume: "3,4 куб", segment: "tk", flagged: false },
+    { seller: "wearhouse", orders: 36, volume: "4,8 куб", segment: "tk", flagged: false },
+    { seller: "cocoon", orders: 4, volume: "0,5 куб", segment: "courier", flagged: false, whOverride: "ТВХ Котельники" },
+    { seller: "jeans", orders: 6, volume: "0,8 куб", segment: "courier", flagged: false, whOverride: "ТВХ Старый Оскол" }
+  ];
+
+  var sellerById = {};
+  sellers.forEach(function (s) { sellerById[s.id] = s; });
+
+  var selectedSellerId = "boutique";
+  var currentFilter = "all";
+  var searchQuery = "";
+
+  var overrides = {};
+
+  function typeLabel(t) { return t === "courier" ? "Курьер" : "ТК"; }
+
+  function renderSellerList() {
+    var list = document.getElementById("seller-list");
+    list.innerHTML = "";
+    var q = searchQuery.trim().toLowerCase();
+
+    sellers.forEach(function (s) {
+      if (currentFilter === "courier" && s.type !== "courier") return;
+      if (currentFilter === "tk" && s.type !== "tk") return;
+      if (currentFilter === "attention" && !s.attention) return;
+      if (q && s.name.toLowerCase().indexOf(q) === -1) return;
+
+      var li = document.createElement("li");
+      li.className = "seller-row" + (s.id === selectedSellerId ? " is-selected" : "");
+      li.setAttribute("data-id", s.id);
+
+      var top = document.createElement("div");
+      top.className = "seller-row__top";
+      var name = document.createElement("span");
+      name.className = "seller-row__name";
+      name.textContent = s.name;
+      top.appendChild(name);
+      var badge = document.createElement("span");
+      badge.className = "badge badge--" + s.type;
+      badge.textContent = typeLabel(s.type);
+      top.appendChild(badge);
+      li.appendChild(top);
+
+      var meta = document.createElement("div");
+      meta.className = "seller-row__meta";
+      var metaText = document.createElement("span");
+      metaText.textContent = s.city + " · медиана " + s.median;
+      meta.appendChild(metaText);
+      if (s.attention) {
+        var flag = document.createElement("span");
+        flag.className = "seller-row__flag";
+        flag.title = "Требует внимания";
+        meta.appendChild(flag);
+      }
+      li.appendChild(meta);
+
+      li.addEventListener("click", function () {
+        selectedSellerId = s.id;
+        renderSellerList();
+        renderDetail();
+      });
+      list.appendChild(li);
+    });
+
+    if (!list.children.length) {
+      var empty = document.createElement("li");
+      empty.className = "seller-row";
+      empty.style.color = "var(--muted-2)";
+      empty.style.cursor = "default";
+      empty.textContent = "Ничего не найдено";
+      list.appendChild(empty);
+    }
+  }
+
+  function renderSpark(orders7d, median) {
+    var max = Math.max.apply(null, orders7d.concat([THRESHOLD]));
+    var thresholdPct = (THRESHOLD / max) * 100;
+    var wrap = document.createElement("div");
+    wrap.className = "spark";
+
+    var threshold = document.createElement("div");
+    threshold.className = "spark__threshold";
+    threshold.style.bottom = thresholdPct + "%";
+    var label = document.createElement("span");
+    label.className = "spark__threshold-label";
+    label.textContent = "лимит " + THRESHOLD;
+    threshold.appendChild(label);
+    wrap.appendChild(threshold);
+
+    orders7d.forEach(function (v) {
+      var bar = document.createElement("div");
+      bar.className = "spark__bar" + (v > THRESHOLD ? " is-over" : "");
+      bar.style.height = Math.max(4, (v / max) * 100) + "%";
+      bar.title = String(v);
+      wrap.appendChild(bar);
+    });
+    return wrap;
+  }
+
+  function renderDetail() {
+    var s = sellerById[selectedSellerId];
+    var root = document.getElementById("seller-detail");
+    root.innerHTML = "";
+    if (!s) return;
+
+    var body = document.createElement("div");
+    body.className = "panel__body";
+    body.style.display = "flex";
+    body.style.flexDirection = "column";
+    body.style.gap = "14px";
+
+    // header
+    var header = document.createElement("div");
+    header.className = "detail__header";
+    var h = document.createElement("div");
+    var title = document.createElement("div");
+    title.className = "detail__title";
+    title.textContent = s.name;
+    h.appendChild(title);
+    var meta = document.createElement("div");
+    meta.className = "detail__meta";
+    meta.textContent = s.city + " · базовый склад: " + s.wh + " · следующий пересмотр сегмента: " + s.reviewDate;
+    h.appendChild(meta);
+    header.appendChild(h);
+    var badge = document.createElement("span");
+    badge.className = "badge badge--" + s.type;
+    badge.style.fontSize = "12px";
+    badge.style.padding = "6px 11px";
+    badge.textContent = "Тип пикапа: " + typeLabel(s.type);
+    header.appendChild(badge);
+    body.appendChild(header);
+
+    // warning banner (geo mismatch)
+    if (!s.geoOk) {
+      var banner = document.createElement("div");
+      banner.className = "warn-banner";
+      var icon = document.createElement("div");
+      icon.className = "warn-banner__icon";
+      icon.textContent = "⚠️";
+      banner.appendChild(icon);
+      var wbody = document.createElement("div");
+      wbody.className = "warn-banner__body";
+      var wtitle = document.createElement("div");
+      wtitle.className = "warn-banner__title";
+      wtitle.textContent = "Медиана подходит курьерке, но склад вне зоны покрытия";
+      wbody.appendChild(wtitle);
+      var wtext = document.createElement("div");
+      wtext.textContent = "Медиана " + s.median + " паков укладывается в лимит " + THRESHOLD +
+        ", но склад селлера (" + s.geoZone + ") не покрыт курьерским полигоном. Ближайшая зона: " + s.nearestZone + ".";
+      wbody.appendChild(wtext);
+      var actions = document.createElement("div");
+      actions.className = "warn-banner__actions";
+      var btnToTk = document.createElement("button");
+      btnToTk.className = "btn btn-warn btn-sm";
+      btnToTk.textContent = "Сменить тип пикапа на ТК";
+      btnToTk.addEventListener("click", function () { changeSellerType(s.id, "tk"); });
+      actions.appendChild(btnToTk);
+      var btnDismiss = document.createElement("button");
+      btnDismiss.className = "btn btn-ghost btn-sm";
+      btnDismiss.textContent = "Оставить как есть";
+      btnDismiss.addEventListener("click", function () {
+        showToast("Оставлено без изменений — предупреждение появится снова при следующем пересмотре.");
+      });
+      actions.appendChild(btnDismiss);
+      wbody.appendChild(actions);
+      banner.appendChild(wbody);
+      body.appendChild(banner);
+    } else if (s.attention) {
+      var banner2 = document.createElement("div");
+      banner2.className = "warn-banner";
+      var icon2 = document.createElement("div");
+      icon2.className = "warn-banner__icon";
+      icon2.textContent = "🔎";
+      banner2.appendChild(icon2);
+      var wbody2 = document.createElement("div");
+      wbody2.className = "warn-banner__body";
+      var wtitle2 = document.createElement("div");
+      wtitle2.className = "warn-banner__title";
+      wtitle2.textContent = "Медиана близко к порогу — назначена ручная проверка";
+      wbody2.appendChild(wtitle2);
+      var wtext2 = document.createElement("div");
+      wtext2.textContent = "Медиана " + s.median + " из " + THRESHOLD + ". До перевода на ТК осталось немного — сотрудник склада подтверждает объём вручную на этапе пилота.";
+      wbody2.appendChild(wtext2);
+      banner2.appendChild(wbody2);
+      body.appendChild(banner2);
+    } else {
+      var okBanner = document.createElement("div");
+      okBanner.className = "geo-row";
+      okBanner.innerHTML = '<span class="status-chip status-chip--ok">Гео и объём в норме — изменений не требуется</span>';
+      body.appendChild(okBanner);
+    }
+
+    // metrics
+    var metricGrid = document.createElement("div");
+    metricGrid.className = "metric-grid";
+
+    var m1 = document.createElement("div");
+    m1.className = "metric-card";
+    m1.innerHTML = '<div class="metric-card__label">Медиана, паков / 14 дн.</div>' +
+      '<div class="metric-card__value">' + s.median + '</div>' +
+      '<div class="metric-card__hint">лимит курьерки — ' + THRESHOLD + '</div>';
+    metricGrid.appendChild(m1);
+
+    var m2 = document.createElement("div");
+    m2.className = "metric-card";
+    m2.innerHTML = '<div class="metric-card__label">Гео-покрытие</div>' +
+      '<div class="metric-card__value" style="font-size:15px;">' + (s.geoOk ? "Покрыто" : "Не покрыто") + '</div>' +
+      '<div class="metric-card__hint">' + s.geoZone + '</div>';
+    metricGrid.appendChild(m2);
+
+    var m3 = document.createElement("div");
+    m3.className = "metric-card";
+    m3.innerHTML = '<div class="metric-card__label">Следующий пересмотр</div>' +
+      '<div class="metric-card__value" style="font-size:15px;">' + s.reviewDate + '</div>' +
+      '<div class="metric-card__hint">команда Толмачева, раз в 1–2 недели</div>';
+    metricGrid.appendChild(m3);
+
+    body.appendChild(metricGrid);
+
+    // sparkline
+    var sparkPanel = document.createElement("div");
+    sparkPanel.className = "metric-card";
+    var sparkLabel = document.createElement("div");
+    sparkLabel.className = "metric-card__label";
+    sparkLabel.textContent = "Заказы к забору, последние 7 дней";
+    sparkPanel.appendChild(sparkLabel);
+    sparkPanel.appendChild(renderSpark(s.orders7d, s.median));
+    body.appendChild(sparkPanel);
+
+    // history
+    var histPanel = document.createElement("div");
+    var histLabel = document.createElement("div");
+    histLabel.className = "metric-card__label";
+    histLabel.style.marginBottom = "8px";
+    histLabel.textContent = "История изменений сегмента";
+    histPanel.appendChild(histLabel);
+    var histList = document.createElement("ul");
+    histList.className = "history-list";
+    s.history.forEach(function (h) {
+      var item = document.createElement("li");
+      item.className = "history-item";
+      var time = document.createElement("time");
+      time.textContent = h[0];
+      item.appendChild(time);
+      var text = document.createElement("span");
+      text.textContent = h[1];
+      item.appendChild(text);
+      histList.appendChild(item);
+    });
+    histPanel.appendChild(histList);
+    body.appendChild(histPanel);
+
+    // manual change control (always available, not only on warning)
+    if (s.geoOk && !s.attention) {
+      var manual = document.createElement("div");
+      manual.style.display = "flex";
+      manual.style.justifyContent = "flex-end";
+      var btnManual = document.createElement("button");
+      btnManual.className = "btn btn-sm";
+      btnManual.textContent = "Сменить тип пикапа вручную";
+      btnManual.addEventListener("click", function () {
+        changeSellerType(s.id, s.type === "courier" ? "tk" : "courier");
+      });
+      manual.appendChild(btnManual);
+      body.appendChild(manual);
+    }
+
+    root.appendChild(body);
+  }
+
+  function changeSellerType(id, newType) {
+    var s = sellerById[id];
+    s.type = newType;
+    s.geoOk = true;
+    s.attention = false;
+    s.history.unshift(["03.08.2026", typeLabel(newType === "courier" ? "tk" : "courier") + " → " + typeLabel(newType) + ", вручную"]);
+    renderSellerList();
+    renderDetail();
+    showToast("Тип пикапа изменён на «" + typeLabel(newType) + "». Применится при следующем пересмотре сегмента: " + s.reviewDate + ".");
+  }
+
+  // ---------- Screen B ----------
+
+  var selectedRows = {};
+
+  function currentRowType(i) {
+    return overrides.hasOwnProperty(i) ? overrides[i] : dailyRows[i].segment;
+  }
+
+  function selectedCount() {
+    return Object.keys(selectedRows).filter(function (k) { return selectedRows[k]; }).length;
+  }
+
+  function renderBulkBar() {
+    var count = selectedCount();
+    var bar = document.getElementById("bulk-bar");
+    bar.hidden = count === 0;
+    document.getElementById("bulk-bar-count").textContent = "Выбрано " + count;
+
+    var selectAll = document.getElementById("select-all-checkbox");
+    selectAll.checked = count > 0 && count === dailyRows.length;
+    selectAll.indeterminate = count > 0 && count < dailyRows.length;
+  }
+
+  function renderDailyTable() {
+    var tbody = document.getElementById("daily-table-body");
+    tbody.innerHTML = "";
+
+    dailyRows.forEach(function (row, i) {
+      var s = sellerById[row.seller];
+      var tr = document.createElement("tr");
+      if (selectedRows[i]) tr.classList.add("is-selected");
+
+      var tdCheck = document.createElement("td");
+      tdCheck.className = "col-check";
+      var checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = !!selectedRows[i];
+      checkbox.setAttribute("aria-label", "Выбрать заявку " + s.name);
+      checkbox.addEventListener("change", function () {
+        selectedRows[i] = checkbox.checked;
+        tr.classList.toggle("is-selected", checkbox.checked);
+        renderBulkBar();
+      });
+      tdCheck.appendChild(checkbox);
+      tr.appendChild(tdCheck);
+
+      var tdSeller = document.createElement("td");
+      var cell = document.createElement("div");
+      cell.className = "seller-cell";
+      var nameEl = document.createElement("div");
+      nameEl.className = "seller-cell__name";
+      nameEl.textContent = s.name;
+      cell.appendChild(nameEl);
+      var whEl = document.createElement("div");
+      whEl.className = "seller-cell__wh";
+      whEl.textContent = row.whOverride || s.wh;
+      cell.appendChild(whEl);
+      tdSeller.appendChild(cell);
+      tr.appendChild(tdSeller);
+
+      var tdOrders = document.createElement("td");
+      tdOrders.className = "col-num num";
+      tdOrders.textContent = row.orders;
+      tr.appendChild(tdOrders);
+
+      var tdVolume = document.createElement("td");
+      tdVolume.className = "col-num num";
+      tdVolume.textContent = row.volume;
+      tr.appendChild(tdVolume);
+
+      var tdSegment = document.createElement("td");
+      var segBadge = document.createElement("span");
+      segBadge.className = "badge badge--" + row.segment;
+      segBadge.textContent = typeLabel(row.segment) + " (сегмент)";
+      tdSegment.appendChild(segBadge);
+      tr.appendChild(tdSegment);
+
+      var tdFinal = document.createElement("td");
+      var select = document.createElement("select");
+      select.className = "type-select val-" + currentRowType(i);
+      select.setAttribute("aria-label", "Итог по заявке " + s.name);
+      ["courier", "tk"].forEach(function (val) {
+        var opt = document.createElement("option");
+        opt.value = val;
+        opt.textContent = typeLabel(val);
+        if (currentRowType(i) === val) opt.selected = true;
+        select.appendChild(opt);
+      });
+      select.addEventListener("change", function () {
+        overrides[i] = select.value;
+        select.className = "type-select val-" + select.value;
+        renderSummary();
+      });
+      tdFinal.appendChild(select);
+
+      if (row.note || row.flagged) {
+        var note = document.createElement("div");
+        note.className = "row-note";
+        note.innerHTML = "⚠ " + (row.note || "требует проверки перед отправкой");
+        tdFinal.appendChild(note);
+      }
+      tr.appendChild(tdFinal);
+
+      tbody.appendChild(tr);
+    });
+
+    renderSummary();
+    renderBulkBar();
+  }
+
+  function applyBulkType(type) {
+    var ids = Object.keys(selectedRows).filter(function (k) { return selectedRows[k]; });
+    if (!ids.length) return;
+    ids.forEach(function (k) { overrides[k] = type; });
+    var count = ids.length;
+    selectedRows = {};
+    renderDailyTable();
+    showToast("Перенесено в «" + typeLabel(type) + "»: " + count + (count === 1 ? " заявка" : " заявок") + ".");
+  }
+
+  document.getElementById("select-all-checkbox").addEventListener("change", function (e) {
+    var checked = e.target.checked;
+    dailyRows.forEach(function (row, i) { selectedRows[i] = checked; });
+    renderDailyTable();
+  });
+
+  document.getElementById("bulk-to-courier").addEventListener("click", function () { applyBulkType("courier"); });
+  document.getElementById("bulk-to-tk").addEventListener("click", function () { applyBulkType("tk"); });
+  document.getElementById("bulk-clear").addEventListener("click", function () {
+    selectedRows = {};
+    renderDailyTable();
+  });
+
+  function renderSummary() {
+    var courier = 0, tk = 0, edited = 0, attention = 0;
+    dailyRows.forEach(function (row, i) {
+      var t = currentRowType(i);
+      if (t === "courier") courier++; else tk++;
+      if (overrides.hasOwnProperty(i) && overrides[i] !== row.segment) edited++;
+      if (row.flagged && currentRowType(i) === "courier") attention++;
+    });
+    document.getElementById("stat-total").textContent = dailyRows.length;
+    document.getElementById("stat-courier").textContent = courier;
+    document.getElementById("stat-tk").textContent = tk;
+    document.getElementById("stat-edited").textContent = edited;
+
+    var chip = document.getElementById("stat-attention-chip");
+    var sendBtn = document.getElementById("btn-send");
+    if (attention > 0) {
+      chip.style.display = "";
+      chip.textContent = attention + " требует проверки";
+      sendBtn.disabled = true;
+    } else {
+      chip.style.display = "none";
+      sendBtn.disabled = false;
+    }
+  }
+
+  document.getElementById("btn-reset").addEventListener("click", function () {
+    overrides = {};
+    renderDailyTable();
+    showToast("Разделение сброшено к дефолтным значениям сегмента.");
+  });
+
+  document.getElementById("btn-send").addEventListener("click", function () {
+    var courier = document.getElementById("stat-courier").textContent;
+    var tk = document.getElementById("stat-tk").textContent;
+    document.getElementById("footer-hint").textContent =
+      "Разбивка на 03.08 отправлена: " + courier + " курьеру, " + tk + " в ТК (1С TLE).";
+    showToast("Разделение на 03.08 отправлено в системы исполнителей: " + courier + " курьеру, " + tk + " в ТК.");
+  });
+
+  // ---------- search / filters ----------
+  document.getElementById("seller-search-input").addEventListener("input", function (e) {
+    searchQuery = e.target.value;
+    renderSellerList();
+  });
+
+  document.querySelectorAll(".filter-chip").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      document.querySelectorAll(".filter-chip").forEach(function (c) { c.classList.remove("is-active"); });
+      chip.classList.add("is-active");
+      currentFilter = chip.getAttribute("data-filter");
+      renderSellerList();
+    });
+  });
+
+  // ---------- stepper ----------
+  document.querySelectorAll(".stepper__item").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".stepper__item").forEach(function (b) { b.classList.remove("is-active"); });
+      btn.classList.add("is-active");
+      var target = btn.getAttribute("data-screen");
+      document.getElementById("screen-settings").hidden = target !== "settings";
+      document.getElementById("screen-daily").hidden = target !== "daily";
+    });
+  });
+
+  // ---------- toast ----------
+  var toastTimer = null;
+  function showToast(text) {
+    var el = document.getElementById("toast");
+    el.textContent = text;
+    el.classList.add("is-visible");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove("is-visible"); }, 3600);
+  }
+
+  // ---------- init ----------
+  renderSellerList();
+  renderDetail();
+  renderDailyTable();
+})();
+</script>
