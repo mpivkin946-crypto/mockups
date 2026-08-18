@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ограничение переносов LMD — презентация</title>
+<title>Ситуация с переносами — LMD</title>
 <style>
   :root {
     --ink: #000000; --bg: #ffffff; --frame-line: #d6d6d6;
@@ -103,10 +103,12 @@
   .chip.is-sys { background: #000; color: #fff; border-color: #000; }
   .stage__box b { font-weight: 700; }
   .stage__lim { display: inline-block; margin-top: 6px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; }
-  .stage__lim.no { color: var(--critical); }
+  .stage__lim.no { color: var(--muted); }
   .stage__lim.yes { color: var(--accent); }
   .stage-band { border: 1px solid var(--accent-soft-line); background: var(--accent-soft); border-radius: 8px; padding: 11px 14px; font-size: 12.5px; text-align: center; line-height: 1.5; }
   .stage-band b { font-weight: 800; }
+  .stage-band.is-neutral { background: #f7f7f7; border-color: var(--frame-line); color: var(--muted); text-align: left; }
+  .stage-band.is-neutral b { color: var(--ink); }
 
   /* ---- Stat tiles ---- */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 11px; }
@@ -154,6 +156,13 @@
   .panel li { font-size: 12.5px; line-height: 1.5; position: relative; padding-left: 15px; }
   .panel li::before { content: "—"; position: absolute; left: 0; color: var(--muted-2); }
   .panel li b { font-weight: 700; }
+  /* TBD marker — metric we cannot compute from the current dump, needs analytics */
+  .tbd { display: inline-block; font-size: 9.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+         color: var(--warn); background: var(--warn-soft); border: 1px solid var(--warn-line);
+         border-radius: 4px; padding: 1px 5px; vertical-align: middle; margin-left: 5px; white-space: nowrap; }
+  .scenario { display: flex; flex-direction: column; gap: 13px; }
+  .scenario__v { display: block; font-family: var(--font-serif); font-size: clamp(22px, 2.6vw, 30px); font-weight: 500; line-height: 1.05; letter-spacing: -0.02em; }
+  .scenario__l { display: block; font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
 
   /* ---- Reason bars ---- */
   .reasons { display: flex; flex-direction: column; gap: 7px; }
@@ -219,12 +228,12 @@
   <section class="slide slide--cover is-active" data-slide>
     <div class="cover-inner">
       <span class="vertical-tag">LMD · ПЕРЕНОСЫ ДАТЫ ДОСТАВКИ</span>
-      <span class="eyebrow">Курьерская доставка · инициатива Q3 2026</span>
-      <h1>Ограничение переносов даты доставки</h1>
-      <p class="sub">Сегодня количество переносов заказа в LMD ничем не ограничено. Разбираем, во что это обходится, и предлагаем правило.</p>
+      <span class="eyebrow">Курьерская доставка</span>
+      <h1>Ситуация с переносами</h1>
+      <p class="sub">Как сегодня устроен перенос даты доставки на всей цепочке — кто его делает, сколько их, почему они происходят и во что обходятся.</p>
       <dl class="meta-grid">
-        <dt>Данные</dt><dd>PA-7905, продуктовая аналитика доставки, период 13.05–31.07.2026</dd>
-        <dt>Цель встречи</dt><dd>Согласовать целевое правило и запустить реализацию</dd>
+        <dt>Период анализа</dt><dd>13.05 – 31.07.2026</dd>
+        <dt>Цель встречи</dt><dd>Показать картину с переносами на текущий момент</dd>
       </dl>
       <div class="lamoda-hero">lamoda</div>
     </div>
@@ -237,8 +246,8 @@
       <div class="pattern-strip"></div>
       <div class="divider-body">
         <span class="eyebrow">Тезис</span>
-        <h2 class="thesis">Мы вкладываем логистику в заказы, у которых уже нет спроса</h2>
-        <p class="thesis-sub">Перенос — нормальный инструмент сервиса. Проблема не в первом и не во втором переносе, а в том, что счётчик никто не ведёт и остановиться некому: заказ уходит на 4-й, 5-й, 6-й круг, занимая полку, слот и курьера — и в итоге всё равно отменяется.</p>
+        <h2 class="thesis">Перенести заказ может почти кто угодно и сколько угодно раз — счётчика нет ни у кого</h2>
+        <p class="thesis-sub">Перенос сам по себе — нормальный инструмент сервиса, и первые два переноса экономику заказа не ломают. Но ограничения на количество переносов не существует ни на одном этапе цепочки. В результате часть заказов уходит на 4-й, 5-й и 6-й круг — занимая полку, слот и курьера, и в большинстве случаев всё равно заканчиваясь отменой.</p>
       </div>
       <div class="pattern-strip"></div>
     </div>
@@ -256,13 +265,13 @@
             <div class="stage__head"><span class="stage__idx">1</span><span class="stage__name">Собирается на складе</span></div>
             <div class="stage__box">
               <div class="who"><span class="chip is-sys">система</span></div>
-              Технически перенос возможен, но на этом этапе он <b>избыточен</b> — заказ ещё не обещан в конкретный день
+              Технически перенос возможен, но на этом этапе он <b>избыточен</b> — заказ ещё не вышел в логистику
               <span class="stage__lim no">лимита нет</span>
             </div>
           </div>
           <div class="stage">
             <div class="stage__head"><span class="stage__idx">2</span><span class="stage__name">Логистика, включая ТВХ</span></div>
-            <div class="stage__box is-crit">
+            <div class="stage__box">
               <div class="who"><span class="chip">супервайзер</span><span class="chip">колл-центр</span></div>
               Задержка поставки, некорректный адрес, дискретность доставки, уровень сервиса, просьба клиента
               <span class="stage__lim no">лимита нет</span>
@@ -270,7 +279,7 @@
           </div>
           <div class="stage">
             <div class="stage__head"><span class="stage__idx">3</span><span class="stage__name">Курьер на маршруте</span></div>
-            <div class="stage__box is-crit">
+            <div class="stage__box">
               <div class="who"><span class="chip">курьер</span><span class="chip">колл-центр</span><span class="chip">супервайзер</span></div>
               Просьба клиента, недозвон, задержка на маршруте, неверный адрес, форс-мажор
               <span class="stage__lim no">лимита нет · только 3 попытки доставки</span>
@@ -278,14 +287,14 @@
           </div>
           <div class="stage">
             <div class="stage__head"><span class="stage__idx">4</span><span class="stage__name">После маршрута</span></div>
-            <div class="stage__box is-crit">
+            <div class="stage__box">
               <div class="who"><span class="chip">колл-центр</span><span class="chip">супервайзер</span></div>
               Заказ лёг на полку без даты — КЦ вручную ежедневно проставляет новую обещанную дату
               <span class="stage__lim no">лимита нет</span>
             </div>
           </div>
         </div>
-        <div class="stage-band" style="background:var(--critical-soft); border-color:var(--critical-line)">
+        <div class="stage-band is-neutral">
           Единственное ограничение во всей цепочке — <b>1 перенос для клиента в личном кабинете</b>. Всё остальное — ручной процесс без счётчика: клиент, КЦ, супервайзер и курьер видят разные данные и не знают, какой это перенос по счёту.
         </div>
       </div>
@@ -298,31 +307,30 @@
     <div class="card">
       <span class="la-badge">la</span>
       <span class="eyebrow">2 · Масштаб</span>
-      <h2>За 2,5 месяца — 190 тысяч переносов</h2>
+      <h2>Каждый девятый заказ переносится хотя бы раз</h2>
       <div class="card__body">
         <div class="stats">
           <div class="stat">
-            <div class="stat__val">152<small>тыс.</small></div>
-            <div class="stat__lab">заказов LMD получили хотя бы один перенос<br>≈ 58 тыс. в месяц</div>
-          </div>
-          <div class="stat">
-            <div class="stat__val">190<small>тыс.</small></div>
-            <div class="stat__lab">событий переноса всего<br>в среднем 1,25 переноса на такой заказ</div>
+            <div class="stat__val">1,31<small>млн</small></div>
+            <div class="stat__lab">заказов курьерской доставки<br>за период анализа</div>
           </div>
           <div class="stat is-crit">
-            <div class="stat__val">36<small>%</small></div>
-            <div class="stat__lab">переносов происходит <b>на маршруте</b> — это самая дорогая часть: курьер уже выехал</div>
+            <div class="stat__val">11,6<small>%</small></div>
+            <div class="stat__lab">из них перенесены хотя бы один раз — это <b>152 тыс. заказов</b>, ≈ 58 тыс. в месяц</div>
+          </div>
+          <div class="stat is-crit">
+            <div class="stat__val">190<small>тыс.</small></div>
+            <div class="stat__lab">самих событий переноса — часть заказов переносится по несколько раз. <b>36% из них — на маршруте</b>, когда курьер уже выехал</div>
           </div>
           <div class="stat is-crit">
             <div class="stat__val">6,6<small>тыс.</small></div>
-            <div class="stat__lab">заказов с <b>3 и более</b> переносами (4,3%) — из них 1,7 тыс. с четырьмя и более</div>
+            <div class="stat__lab">заказов перенесены <b>3 и более раз</b> (4,3% от перенесённых), из них 1,7 тыс. — четыре и более</div>
           </div>
         </div>
         <ul class="bullets">
           <li>Хвост длинный: в выгрузке есть заказы с <b>13, 17 и 22 переносами</b> — то есть верхней границы физически не существует</li>
-          <li>По мере роста числа переносов состав меняется: до 3-го быстро растут дорогие <b>on-route</b> переносы, после 4-го — заказ просто <b>лежит и ждёт</b> (растёт pre-route)</li>
+          <li>По мере роста числа переносов состав меняется: до 3-го быстро растут дорогие переносы <b>на маршруте</b>, после 4-го заказ уже просто <b>лежит и ждёт</b> следующей попытки</li>
         </ul>
-        <p class="src"><b>Источник:</b> PA-7905, Андрей Югов, обновлено 17.08.2026. Период 13.05–31.07.2026, RU.</p>
       </div>
       <span class="slide__num">04</span>
     </div>
@@ -340,8 +348,8 @@
             <div class="panel__title">До выхода на маршрут <span class="tag">129 тыс. событий · 64%</span></div>
             <div class="reasons">
               <div class="reason"><span>по просьбе клиента</span><span class="reason__track"><span class="reason__fill" style="width:92%"></span></span><span class="reason__pct">92%</span></div>
-              <div class="reason"><span>задержка поставки</span><span class="reason__track"><span class="reason__fill is-warn" style="width:7.4%"></span></span><span class="reason__pct">7%</span></div>
-              <div class="reason"><span>недозвон до клиента</span><span class="reason__track"><span class="reason__fill is-crit" style="width:0.5%"></span></span><span class="reason__pct">1%</span></div>
+              <div class="reason"><span>задержка поставки</span><span class="reason__track"><span class="reason__fill is-warn" style="width:7.7%"></span></span><span class="reason__pct">8%</span></div>
+              <div class="reason"><span>недозвон до клиента</span><span class="reason__track"><span class="reason__fill is-crit" style="width:0.5%"></span></span><span class="reason__pct">&lt;1%</span></div>
             </div>
           </div>
           <div class="panel" style="background:var(--critical-soft); border-color:var(--critical-line)">
@@ -349,16 +357,15 @@
             <div class="reasons">
               <div class="reason"><span>по просьбе клиента</span><span class="reason__track"><span class="reason__fill" style="width:71%"></span></span><span class="reason__pct">71%</span></div>
               <div class="reason"><span>недозвон до клиента</span><span class="reason__track"><span class="reason__fill is-crit" style="width:27.5%"></span></span><span class="reason__pct">28%</span></div>
-              <div class="reason"><span>задержка / просрочка</span><span class="reason__track"><span class="reason__fill is-warn" style="width:1.4%"></span></span><span class="reason__pct">1%</span></div>
+              <div class="reason"><span>задержка</span><span class="reason__track"><span class="reason__fill is-warn" style="width:1.3%"></span></span><span class="reason__pct">1%</span></div>
             </div>
           </div>
         </div>
         <ul class="bullets">
-          <li><b>28% переносов на маршруте — недозвон.</b> Курьер уже приехал, но не смог связаться. Это прямой аргумент за подтверждение готовности принять заказ перед повторным выездом</li>
+          <li><b>28% переносов на маршруте — недозвон.</b> Курьер уже приехал, но не смог связаться с клиентом. Это самая дорогая форма переноса: выезд уже оплачен</li>
           <li>Интенсивность недозвонов растёт с каждой попыткой: <b>+0,4 недозвона</b> между 1-й и 2-й, столько же между 2-й и 3-й</li>
-          <li><b>~5% переносов — по нашей вине</b> (задержка поставки, просрочка). Они не должны расходовать клиентский лимит</li>
+          <li><b>~5% всех переносов — задержка на нашей стороне</b>, а не решение клиента</li>
         </ul>
-        <p class="src"><b>Источник:</b> PA-7905, срез по delivery_status × external_code.</p>
       </div>
       <span class="slide__num">05</span>
     </div>
@@ -399,7 +406,7 @@
           </div>
         </div>
         <p class="tbl-note">Между 2-м и 3-м переносом <b>RRR растёт на 8 п.п.</b> (73% → 81%), а <b>PC2 падает в 3,5 раза</b> (487 ₽ → 136 ₽). При четырёх переносах экономика заказа уже около нуля, дальше — уверенный минус.</p>
-        <p class="src"><b>Важная оговорка (её делает и сам аналитик):</b> это итоговая экономика групп заказов, а не маржинальный эффект конкретно N-го переноса. Цифры показывают, где проходит граница, но не доказывают, что запрет N-го переноса вернёт PC2 на уровень предыдущей группы. Поэтому решение ниже мы строим не на «поднимем PC2», а на «перестанем вкладываться туда, где отдачи нет».</p>
+        <p class="src"><b>Важная оговорка:</b> это итоговая экономика групп заказов, а не маржинальный эффект конкретно N-го переноса <span class="tbd">TBD</span>. Цифры показывают, где проходит граница, но не доказывают, что запрет N-го переноса вернёт PC2 на уровень предыдущей группы. Поэтому дальше мы говорим не «поднимем PC2», а «перестанем вкладываться туда, где отдачи нет».</p>
       </div>
       <span class="slide__num">06</span>
     </div>
@@ -441,7 +448,6 @@
         <div class="stage-band" style="background:var(--critical-soft);border-color:var(--critical-line);text-align:left">
           <b>Во что это обходится:</b> клиент получает негативный опыт и уходит &nbsp;·&nbsp; логистика платит за холдирование стока, бесполезные выезды и хранение на ТВХ &nbsp;·&nbsp; КЦ ежедневно вручную проставляет даты &nbsp;·&nbsp; метрики DOT и CR on route искажены заказами, у которых практически нет шанса доехать
         </div>
-        <p class="src"><b>Источники:</b> PA-7905 (объёмы и экономика) · «Флоу переносов LMD», Э. Вербенко, 01.07.2026 (вероятность отмены) · встреча по переносам 20.05.2026 (операционная механика).</p>
       </div>
       <span class="slide__num">07</span>
     </div>
@@ -493,26 +499,26 @@
   <section class="slide" data-slide>
     <div class="card">
       <span class="la-badge">la</span>
-      <span class="eyebrow">7 · Целевое правило</span>
-      <h2>Не жёсткий обрыв, а три уровня</h2>
+      <span class="eyebrow">7 · Где проводить границу</span>
+      <h2>Два уровня понятны, третий — предмет обсуждения</h2>
       <div class="card__body">
         <div class="ladder">
           <div class="rung is-ok">
             <div class="rung__n">1–2</div>
-            <div class="rung__t"><b>Свободно</b>Экономика здоровая: PC2 802 ₽ и 487 ₽ на заказ. Перенос здесь — нормальный сервис, ограничивать нечего</div>
+            <div class="rung__t"><b>Оставляем свободными</b>Экономика здоровая: PC2 802 ₽ и 487 ₽ на заказ. Перенос здесь — нормальный сервис, ограничивать нечего</div>
           </div>
           <div class="rung is-warn">
             <div class="rung__n">3-й</div>
-            <div class="rung__t"><b>Только по подтверждению спроса клиентом</b>Заказ ещё может доехать (PC2 136 ₽), но каждый четвёртый перенос на маршруте — недозвон. Прежде чем везти третий раз, спрашиваем клиента: заказ ещё нужен? Нет ответа — отмена</div>
+            <div class="rung__t"><b>Решение обсуждаем отдельно</b>Заказ ещё доезжает и приносит 136 ₽ PC2, но запас уже тонкий, а каждый четвёртый перенос на маршруте — недозвон. Нужен ли третий перенос вообще, и если да — на каких условиях его давать</div>
           </div>
           <div class="rung is-crit">
             <div class="rung__n">4+</div>
-            <div class="rung__t"><b>Блокируем</b>PC2 отрицательный: −11 ₽, −827 ₽, −1 668 ₽. Здесь спорить не о чем — каждый следующий перенос уничтожает стоимость</div>
+            <div class="rung__t"><b>Ограничиваем</b>PC2 отрицательный: −11 ₽, −827 ₽, −1 668 ₽. Здесь спорить не о чем — каждый следующий перенос уничтожает стоимость заказа</div>
           </div>
         </div>
         <ul class="bullets">
-          <li>Плюс два общих ограничения: <b>горизонт переноса ≤ 7 дней</b> и <b>переносы по вине Lamoda не расходуют лимит клиента</b> (это ~5% событий)</li>
-          <li><b>Почему не жёсткий лимит 2.</b> Он обрубает и те заказы, что сегодня доезжают с положительным PC2 — до 0,25 млн ₽ PC2 в месяц. Подтверждение спроса сохраняет их там, где спрос реальный, и режет там, где его нет</li>
+          <li>Плюс два общих ограничения независимо от числа переносов: <b>горизонт переноса ≤ 7 дней</b> вместо сегодняшних 2–3 недель и <b>переносы из-за задержки на нашей стороне не расходуют лимит клиента</b> (это ~5% событий)</li>
+          <li><b>Почему третий перенос — отдельный разговор.</b> Ограничив его, мы обрубаем и те заказы, что сегодня доезжают с положительным PC2 — порядка 0,25 млн ₽ в месяц. Здесь нужен осознанный выбор, а не автоматическое продолжение линии «4+»</li>
         </ul>
       </div>
       <span class="slide__num">09</span>
@@ -523,110 +529,52 @@
   <section class="slide" data-slide>
     <div class="card">
       <span class="la-badge">la</span>
-      <span class="eyebrow">8 · Outcome</span>
-      <h2>Что получим</h2>
+      <span class="eyebrow">8 · Что это даёт</span>
+      <h2>Цена вопроса по третьему переносу — около 4 млн ₽ в год</h2>
       <div class="card__body is-top">
-        <div class="stats">
-          <div class="stat is-accent">
-            <div class="stat__val">~3,6<small>тыс./мес</small></div>
-            <div class="stat__lab">переносов не состоится — они просто не будут разрешены</div>
+        <div class="split" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+          <div class="panel">
+            <div class="panel__title">Лимит 2 переноса <span class="tag">третьего нет</span></div>
+            <div class="scenario">
+              <div><span class="scenario__v">~3,6 тыс.</span><span class="scenario__l">переносов в месяц не состоится</span></div>
+              <div><span class="scenario__v">~2,1 тыс.<span class="tbd">TBD</span></span><span class="scenario__l">из них — курьерские выезды, которых не будет. Два метода счёта сошлись, расхождение 2%</span></div>
+              <div><span class="scenario__v">~5,5 млн ₽<span class="tbd">TBD</span></span><span class="scenario__l">в год — экономия на несостоявшихся выездах</span></div>
+            </div>
           </div>
-          <div class="stat is-accent">
-            <div class="stat__val">~2,1<small>тыс./мес</small></div>
-            <div class="stat__lab">курьерских выездов не состоится: это те самые дорогие on-route попытки</div>
+          <div class="panel">
+            <div class="panel__title">Лимит 3 переноса <span class="tag">третий разрешён</span></div>
+            <div class="scenario">
+              <div><span class="scenario__v">~1,0 тыс.</span><span class="scenario__l">переносов в месяц не состоится</span></div>
+              <div><span class="scenario__v">~0,2–0,5 тыс.<span class="tbd">TBD</span></span><span class="scenario__l">из них — курьерские выезды, которых не будет. Разброс втрое: с 4-го переноса заказ почти не катается, а лежит</span></div>
+              <div><span class="scenario__v">~0,4–1,3 млн ₽<span class="tbd">TBD</span></span><span class="scenario__l">в год — экономия на несостоявшихся выездах</span></div>
+            </div>
           </div>
-          <div class="stat is-accent">
-            <div class="stat__val">~5,5<small>млн ₽/год</small></div>
-            <div class="stat__lab">прямая экономия на несостоявшихся выездах (≈ 0,46 млн ₽/мес, из расчёта 220 ₽ за выезд)</div>
-          </div>
-          <div class="stat is-accent">
-            <div class="stat__val">≤ 7<small>дней</small></div>
-            <div class="stat__lab">предельный горизонт переноса вместо сегодняшних 2–3 недель</div>
-          </div>
+        </div>
+        <div class="stage-band is-neutral">
+          <b>Разница между моделями — около 4 млн ₽ в год.</b> При этом лимит 2 обрубает и те заказы, что сегодня доезжают с положительным PC2 — порядка 0,25 млн ₽ в месяц <span class="tbd">TBD — верхняя оценка</span>. Это и есть предмет обсуждения по третьему переносу.
         </div>
         <div class="split">
           <div class="panel">
-            <div class="panel__title">Эффекты, которые пока не оцифрованы <span class="tag">открытый вопрос</span></div>
+            <div class="panel__title">Эффекты, которые пока не оцифрованы <span class="tag">нужен расчёт</span></div>
             <ul>
-              <li><b>Полка БМ:</b> товар возвращается в сток недели на 2 раньше и продаётся другому клиенту</li>
-              <li><b>Слоты:</b> освобождаются под заказы с реальным спросом</li>
-              <li><b>Нагрузка КЦ:</b> меньше ручного проставления дат и меньше обращений от «зависших» клиентов</li>
+              <li><b>Полка БМ:</b> товар возвращается в сток на недели раньше и продаётся другому клиенту — нужен средний срок блокировки товара и его стоимость</li>
+              <li><b>Слоты:</b> освобождаются под заказы с реальным спросом — нужен объём слотов, занятых заказами с 3+ переносами</li>
+              <li><b>Колл-центр:</b> проставление даты доставки при недозвоне уходит из КЦ полностью — клиент выбирает новую дату сам в приложении, оператор в этом флоу больше не участвует. Нужен объём этих обращений</li>
               <li><b>Чистота метрик:</b> DOT и CR on route перестают учитывать заказы без шанса на доставку</li>
             </ul>
           </div>
           <div class="panel">
-            <div class="panel__title">Guardrails — за чем следим после запуска <span class="tag ok">не сломать</span></div>
+            <div class="panel__title">За чем следим, чтобы не сломать сервис <span class="tag ok">guardrails</span></div>
             <ul>
-              <li><b>CR (отмены)</b> — вырастет ожидаемо, но не должен вырасти сверх согласованного порога: иначе мы просто ускорили отмены, а не сэкономили</li>
-              <li><b>Contact rate КЦ</b> — не должен вырасти: клиенты не должны пойти в поддержку за тем, чего лишились</li>
+              <li><b>CR (отмены)</b> — вырастет ожидаемо, но не выше согласованного порога: иначе мы просто ускорили отмены, а не сэкономили</li>
+              <li><b>Contact rate КЦ</b> — не должен вырасти: клиенты не должны идти в поддержку за тем, чего лишились</li>
               <li><b>CSAT и BDR</b> — не ухудшаются</li>
             </ul>
           </div>
         </div>
-        <p class="src"><b>Расчёт:</b> на сырой выгрузке PA-7905 (заказы × переносы, средние on-route/pre-route на группу). Стоимость выезда 220 ₽ — внутренняя оценка продукта. Два независимых метода расчёта дали 2,08 и 2,11 тыс. выездов в месяц. Цифры требуют сверки с аналитикой перед защитой в финмодели.</p>
+        <p class="src"><b>TBD</b> — метрика, которую по текущей выгрузке посчитать нельзя: нужен отдельный расчёт продуктовой аналитики.<br><b>Расчёт остального:</b> на выгрузке PA-7905 (заказы × количество переносов, средние on-route и pre-route на группу), стоимость выезда 220 ₽ — внутренняя оценка продукта, средняя, а не предельная <span class="tbd" style="margin-left:0">TBD</span>. Диапазон в первом сценарии — расхождение двух методов счёта; во втором оба метода сошлись. Цифры требуют сверки с аналитикой перед защитой в финмодели.</p>
       </div>
       <span class="slide__num">10</span>
-    </div>
-  </section>
-
-  <!-- 11 · ЧЕГО НЕ ОБЕЩАЕМ -->
-  <section class="slide" data-slide>
-    <div class="card">
-      <span class="la-badge">la</span>
-      <span class="eyebrow">9 · Границы и риски</span>
-      <h2>Чего эта инициатива не делает</h2>
-      <div class="card__body">
-        <div class="panel" style="background:var(--warn-soft);border-color:var(--warn-line)">
-          <div class="panel__title">Не обещаем</div>
-          <ul>
-            <li><b>Не «спасаем» PC2 заказа.</b> Лимит не меняет поведение клиента: тот, кто передумал, откажется в любом случае — просто раньше. Мы прекращаем вкладывать логистику, а не возвращаем маржу</li>
-            <li><b>Не убираем переносы.</b> Переносы 1-й и 2-й никуда не денутся — это 96% всех заказов с переносами. Экономия только на заблокированных</li>
-            <li><b>Не считаем эффект от освобождённой полки и слотов</b> — направление верное, цифры пока нет</li>
-          </ul>
-        </div>
-        <div class="risk-grid">
-          <div class="risk"><span class="risk__dot"></span><span><b>Зависимость от флоу недозвона.</b> Подтверждение спроса перед 3-м переносом — это 24h-флоу, он живёт в проекте «Флоу недозвона». Без него правило вырождается в жёсткий обрыв на двух переносах, со всеми рисками по PC2</span></div>
-          <div class="risk"><span class="risk__dot"></span><span><b>Единый счётчик — техническое ядро.</b> Экспресс, ЛК, КЦ и приложение курьера должны видеть одно значение. Без этого правило неисполнимо в принципе</span></div>
-          <div class="risk"><span class="risk__dot"></span><span><b>Переносы по вине Lamoda.</b> Нужен отдельный признак в системе, иначе клиент платит лимитом за нашу задержку поставки</span></div>
-          <div class="risk"><span class="risk__dot"></span><span><b>Регионы с редкой доставкой.</b> Там, где доставка 2 раза в неделю, 3 переноса = 3 недели ожидания. Возможно, нужен динамический лимит — вопрос открыт</span></div>
-        </div>
-      </div>
-      <span class="slide__num">11</span>
-    </div>
-  </section>
-
-  <!-- 12 · ЧТО ДАЛЬШЕ -->
-  <section class="slide" data-slide>
-    <div class="card">
-      <span class="la-badge">la</span>
-      <span class="eyebrow">10 · Что нужно от вас</span>
-      <h2>Три решения и три следующих шага</h2>
-      <div class="card__body">
-        <div class="ask-list">
-          <div class="ask"><span class="ask__num">1</span><span class="ask__text"><b>Согласовать правило:</b> 1–2 свободно, 3-й по подтверждению спроса, 4+ блокируется. Горизонт переноса ≤ 7 дней</span></div>
-          <div class="ask"><span class="ask__num">2</span><span class="ask__text"><b>Подтвердить связку с флоу недозвона.</b> Без 24h-подтверждения третий уровень правила не реализуется — нужна общая приоритизация двух инициатив</span></div>
-          <div class="ask"><span class="ask__num">3</span><span class="ask__text"><b>Определить владельца единого счётчика переносов</b> на стороне разработки: где он живёт и кто его выставляет во все каналы</span></div>
-        </div>
-        <div class="split" style="margin-top:6px">
-          <div class="panel">
-            <div class="panel__title">Следующие шаги</div>
-            <ul>
-              <li>Сверить расчёт экономии с продуктовой аналитикой и зафиксировать целевые guardrail-пороги по CR и contact rate</li>
-              <li>Отдельно посмотреть слоты с наибольшей долей переносов на маршруте — возможна причина, которую правилом не лечат</li>
-              <li>Проработать признак «перенос по вине Lamoda» с операциями и разработкой</li>
-            </ul>
-          </div>
-          <div class="panel">
-            <div class="panel__title">Открытые вопросы</div>
-            <ul>
-              <li>Считаем pre-route и on-route переносы в один счётчик или раздельно?</li>
-              <li>Нужен ли динамический лимит для регионов с редкой доставкой?</li>
-              <li>Дублируем ли ограничение лимитом дней хранения на складе — или счётчика достаточно?</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-      <span class="slide__num">12</span>
     </div>
   </section>
 
@@ -634,7 +582,7 @@
     <button class="nav-btn" id="prevBtn" type="button" aria-label="Предыдущий слайд">‹</button>
     <div class="dots" id="dots"></div>
     <button class="nav-btn" id="nextBtn" type="button" aria-label="Следующий слайд">›</button>
-    <span class="counter" id="counter">1 / 12</span>
+    <span class="counter" id="counter">1 / 10</span>
   </nav>
 
 </div>
