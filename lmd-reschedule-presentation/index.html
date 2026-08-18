@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ограничение переносов LMD — презентация</title>
+<style>
+  :root {
+    --ink: #000000; --bg: #ffffff; --frame-line: #d6d6d6;
+    --muted: #454545; --muted-2: #7a7a7a;
+    --accent: #3f6b30; --accent-soft: #e7ecdf; --accent-soft-line: #cbd9bd;
+    --divider-blue: #c7d6f5; --divider-blue-2: #eef2fc;
+    --warn: #9a6a0c; --warn-soft: #fbedd3; --warn-line: #e5cf9e;
+    --critical: #b23a3a; --critical-soft: #f8e2e0; --critical-line: #eabfbb;
+    --font-serif: Georgia, "PT Serif", "Noto Serif", "Times New Roman", serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --shadow: 0 2px 10px rgba(0,0,0,0.06);
+  }
+  /* Same fixed deck identity as lmd-routing-presentation / lmd-domain-vision-presentation:
+     black cover, white card, pattern dividers, serif headings. */
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: #f2f2f2; color: var(--ink);
+    font-family: var(--font-sans); font-size: 15px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased; overflow: hidden;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  ::selection { background: var(--accent-soft-line); }
+  button { font-family: inherit; }
+
+  .deck { position: relative; height: 100vh; width: 100vw; overflow: hidden; }
+
+  .slide {
+    position: absolute; inset: 0;
+    padding: clamp(14px, 2.6vw, 34px);
+    opacity: 0; pointer-events: none; transform: translateY(10px);
+    transition: opacity 0.28s ease, transform 0.28s ease;
+  }
+  .slide.is-active { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .slide { transition: none; } }
+
+  /* ---- Card frame ---- */
+  .card {
+    position: relative; height: 100%; width: 100%;
+    background: #fff; border: 1px solid var(--frame-line); border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: clamp(22px, 3.6vw, 44px) clamp(26px, 5vw, 58px);
+    display: flex; flex-direction: column;
+  }
+  .la-badge {
+    position: absolute; top: 22px; right: 22px;
+    width: 32px; height: 32px; background: #000; color: #fff;
+    border-radius: 5px; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 13px; letter-spacing: -0.02em;
+  }
+  .eyebrow { font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 8px; }
+  .card h2 { font-family: var(--font-serif); font-size: clamp(22px, 2.7vw, 31px); font-weight: 500; letter-spacing: -0.005em; max-width: 30ch; }
+  .card__body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; gap: 16px; margin-top: 14px; padding-bottom: 4px; }
+  .card__body.is-top { justify-content: flex-start; }
+  .slide__num { position: absolute; bottom: 22px; right: 28px; font-size: 11px; color: var(--muted-2); font-variant-numeric: tabular-nums; }
+  .src { font-size: 11px; color: var(--muted-2); line-height: 1.45; }
+  .src b { color: var(--muted); font-weight: 700; }
+
+  ul.bullets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 11px; max-width: 78ch; }
+  ul.bullets li { position: relative; padding-left: 20px; font-size: clamp(13.5px, 1.4vw, 16px); line-height: 1.55; }
+  ul.bullets li::before { content: "•"; position: absolute; left: 0; color: var(--ink); font-weight: 700; }
+  ul.bullets b { font-weight: 700; }
+
+  /* ---- Cover / closing ---- */
+  .slide--cover { padding: 0; }
+  .cover-inner { position: relative; height: 100%; width: 100%; background: #000; color: #fff; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; padding: clamp(32px, 6vw, 80px); }
+  .cover-inner .eyebrow { color: #fff; opacity: 0.7; }
+  .cover-inner h1 { font-family: var(--font-serif); font-weight: 500; color: #fff; font-size: clamp(32px, 5.2vw, 56px); line-height: 1.12; max-width: 20ch; }
+  .cover-inner .sub { font-size: clamp(14px, 1.6vw, 17.5px); color: rgba(255,255,255,0.75); margin-top: 14px; max-width: 56ch; }
+  .meta-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; margin-top: 30px; max-width: 64ch; }
+  .meta-grid dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(255,255,255,0.55); white-space: nowrap; padding-top: 2px; }
+  .meta-grid dd { margin: 0; font-size: 14px; color: #fff; }
+  .vertical-tag { position: absolute; top: 28px; right: 30px; writing-mode: vertical-rl; font-size: 11px; letter-spacing: 0.14em; color: rgba(255,255,255,0.6); font-weight: 600; }
+  .lamoda-hero { font-weight: 800; letter-spacing: -0.04em; color: #fff; font-size: clamp(56px, 11vw, 140px); line-height: 0.8; margin-top: clamp(26px, 5vw, 52px); }
+
+  /* ---- Divider ---- */
+  .slide--divider .card { justify-content: center; }
+  .pattern-strip { height: 22px; width: 100%; background-image: repeating-conic-gradient(#000 0% 25%, transparent 0% 50%); background-size: 22px 22px; margin: 0 -1px; }
+  .divider-body { padding: clamp(24px, 4.6vw, 52px) clamp(10px, 3vw, 20px); }
+  .thesis { font-family: var(--font-serif); font-size: clamp(24px, 3.6vw, 40px); font-weight: 500; letter-spacing: -0.01em; max-width: 22ch; line-height: 1.22; }
+  .thesis-sub { font-size: clamp(13.5px, 1.45vw, 16px); color: var(--muted); max-width: 66ch; margin-top: 16px; }
+
+  /* ---- 4-stage spine (the deck's through-line) ---- */
+  .stages { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .stage { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .stage__head { display: flex; align-items: center; gap: 8px; padding-bottom: 7px; border-bottom: 2px solid var(--ink); }
+  .stage__idx { width: 20px; height: 20px; flex: none; border-radius: 4px; background: #000; color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .stage__name { font-size: 12.5px; font-weight: 800; line-height: 1.25; }
+  .stage__box { border: 1px solid var(--frame-line); border-radius: 8px; padding: 10px 12px; font-size: 11.5px; line-height: 1.5; background: #fff; }
+  .stage__box.is-crit { background: var(--critical-soft); border-color: var(--critical-line); }
+  .stage__box.is-good { background: var(--accent-soft); border-color: var(--accent-soft-line); }
+  .stage__box.is-warn { background: var(--warn-soft); border-color: var(--warn-line); }
+  .who { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .chip { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; border: 1px solid var(--frame-line); background: #fafafa; color: var(--muted); white-space: nowrap; }
+  .chip.is-sys { background: #000; color: #fff; border-color: #000; }
+  .stage__box b { font-weight: 700; }
+  .stage__lim { display: inline-block; margin-top: 6px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; }
+  .stage__lim.no { color: var(--critical); }
+  .stage__lim.yes { color: var(--accent); }
+  .stage-band { border: 1px solid var(--accent-soft-line); background: var(--accent-soft); border-radius: 8px; padding: 11px 14px; font-size: 12.5px; text-align: center; line-height: 1.5; }
+  .stage-band b { font-weight: 800; }
+
+  /* ---- Stat tiles ---- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 11px; }
+  .stat { border: 1px solid var(--frame-line); border-radius: 10px; padding: 15px 17px; background: #fff; }
+  .stat__val { font-family: var(--font-serif); font-size: clamp(26px, 3.4vw, 38px); font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
+  .stat__val small { font-size: 0.5em; font-family: var(--font-sans); font-weight: 700; letter-spacing: 0; margin-left: 3px; }
+  .stat__lab { font-size: 11.5px; color: var(--muted); margin-top: 8px; line-height: 1.45; }
+  .stat.is-crit .stat__val { color: var(--critical); }
+  .stat.is-accent .stat__val { color: var(--accent); }
+
+  /* ---- Data table ---- */
+  table.data { border-collapse: collapse; width: 100%; max-width: 780px; font-variant-numeric: tabular-nums; }
+  table.data th, table.data td { padding: 7px 12px; text-align: right; font-size: 12.5px; border-bottom: 1px solid #ececec; }
+  table.data th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-2); font-weight: 700; border-bottom: 1.5px solid var(--ink); }
+  table.data th:first-child, table.data td:first-child { text-align: left; font-weight: 700; }
+  table.data tr.is-break td { background: var(--warn-soft); }
+  table.data tr.is-neg td { color: var(--critical); }
+  table.data tr.is-neg td:first-child { color: var(--ink); }
+  .tbl-note { font-size: 11.5px; color: var(--muted); margin-top: 9px; max-width: 76ch; line-height: 1.5; }
+
+  /* ---- Column chart with zero line ---- */
+  /* Single linear scale across the zero line: +802 … −1668 (span 2470 ₽) */
+  .chart { display: flex; align-items: stretch; gap: 8px; height: clamp(160px, 24vh, 220px); max-width: 700px; }
+  .col { flex: 1; display: flex; flex-direction: column; }
+  .col__pos { flex: 32.5; display: flex; flex-direction: column; justify-content: flex-end; }
+  .col__neg { flex: 67.5; display: flex; flex-direction: column; }
+  .bar { border-radius: 3px 3px 0 0; background: var(--accent); position: relative; min-height: 2px; }
+  .bar.neg { border-radius: 0 0 3px 3px; background: var(--critical); }
+  .bar__v { position: absolute; left: -4px; right: -4px; top: -15px; text-align: center; font-size: 10.5px; font-weight: 800; color: var(--accent); }
+  .bar.neg .bar__v { top: 3px; color: #fff; }
+  .bar.neg .bar__v.is-out { top: 4px; color: var(--critical); }
+  .zero { border-top: 1.5px solid var(--ink); }
+  .col__lab { text-align: center; font-size: 11px; color: var(--muted); padding-top: 20px; }
+  .col__lab b { display: block; font-size: 12px; color: var(--ink); }
+  .chart-legend { font-size: 11.5px; color: var(--muted-2); }
+
+  /* ---- Split panels ---- */
+  .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .panel { border: 1px solid var(--frame-line); border-radius: 10px; padding: 14px 16px; background: #fff; }
+  .panel__title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .panel__title .tag { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; letter-spacing: 0; text-transform: none; }
+  .tag.crit { background: var(--critical-soft); color: var(--critical); }
+  .tag.ok { background: var(--accent-soft); color: var(--accent); }
+  .panel ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .panel li { font-size: 12.5px; line-height: 1.5; position: relative; padding-left: 15px; }
+  .panel li::before { content: "—"; position: absolute; left: 0; color: var(--muted-2); }
+  .panel li b { font-weight: 700; }
+
+  /* ---- Reason bars ---- */
+  .reasons { display: flex; flex-direction: column; gap: 7px; }
+  .reason { display: grid; grid-template-columns: 180px 1fr 52px; align-items: center; gap: 10px; font-size: 12px; }
+  .reason__track { height: 15px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
+  .reason__fill { height: 100%; background: var(--muted); border-radius: 3px; }
+  .reason__fill.is-crit { background: var(--critical); }
+  .reason__fill.is-warn { background: var(--warn); }
+  .reason__pct { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+  /* ---- Rule ladder ---- */
+  .ladder { display: flex; flex-direction: column; gap: 9px; max-width: 900px; }
+  .rung { display: grid; grid-template-columns: 92px 1fr; gap: 16px; align-items: center; border: 1px solid var(--frame-line); border-radius: 10px; padding: 13px 16px; }
+  .rung__n { font-family: var(--font-serif); font-size: 21px; font-weight: 700; text-align: center; line-height: 1.1; }
+  .rung__t { font-size: 13px; line-height: 1.5; }
+  .rung__t b { font-weight: 800; display: block; font-size: 13.5px; margin-bottom: 2px; }
+  .rung.is-ok { background: var(--accent-soft); border-color: var(--accent-soft-line); }
+  .rung.is-ok .rung__n { color: var(--accent); }
+  .rung.is-warn { background: var(--warn-soft); border-color: var(--warn-line); }
+  .rung.is-warn .rung__n { color: var(--warn); }
+  .rung.is-crit { background: var(--critical-soft); border-color: var(--critical-line); }
+  .rung.is-crit .rung__n { color: var(--critical); }
+
+  /* ---- Asks / risks ---- */
+  .ask-list { display: flex; flex-direction: column; gap: 13px; max-width: 76ch; }
+  .ask { display: flex; gap: 14px; align-items: flex-start; }
+  .ask__num { font-family: var(--font-serif); font-weight: 700; color: #000; font-size: 20px; flex: none; width: 22px; }
+  .ask__text { font-size: 13.5px; line-height: 1.55; }
+  .ask__text b { font-weight: 700; }
+  .risk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px 22px; }
+  .risk { display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; line-height: 1.5; }
+  .risk__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); flex: none; margin-top: 6px; }
+  .risk b { font-weight: 700; }
+
+  /* ---- Nav ---- */
+  .chrome { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 10px 20px; }
+  .nav-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--frame-line); background: #fff; color: #000; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+  .nav-btn:hover { border-color: var(--muted-2); }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+  .nav-btn:focus-visible, .dot:focus-visible { outline: 2px solid #000; outline-offset: 2px; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #cfcfcf; border: none; cursor: pointer; padding: 0; }
+  .dot.is-active { background: #000; width: 16px; border-radius: 4px; }
+  .counter { font-size: 11px; color: var(--muted-2); min-width: 46px; text-align: center; font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 860px) {
+    .stages { grid-template-columns: repeat(2, 1fr); }
+    .reason { grid-template-columns: 130px 1fr 46px; }
+  }
+  @media print {
+    body { overflow: visible; background: #fff; }
+    .chrome { display: none; }
+    .deck { height: auto; }
+    .slide { position: static; opacity: 1 !important; transform: none !important; pointer-events: auto; height: 100vh; page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- 1 · COVER -->
+  <section class="slide slide--cover is-active" data-slide>
+    <div class="cover-inner">
+      <span class="vertical-tag">LMD · ПЕРЕНОСЫ ДАТЫ ДОСТАВКИ</span>
+      <span class="eyebrow">Курьерская доставка · инициатива Q3 2026</span>
+      <h1>Ограничение переносов даты доставки</h1>
+      <p class="sub">Сегодня количество переносов заказа в LMD ничем не ограничено. Разбираем, во что это обходится, и предлагаем правило.</p>
+      <dl class="meta-grid">
+        <dt>Данные</dt><dd>PA-7905, продуктовая аналитика доставки, период 13.05–31.07.2026</dd>
+        <dt>Цель встречи</dt><dd>Согласовать целевое правило и запустить реализацию</dd>
+      </dl>
+      <div class="lamoda-hero">lamoda</div>
+    </div>
+  </section>
+
+  <!-- 2 · ТЕЗИС -->
+  <section class="slide slide--divider" data-slide>
+    <div class="card">
+      <span class="la-badge">la</span>
+      <div class="pattern-strip"></div>
+      <div class="divider-body">
+        <span class="eyebrow">Тезис</span>
+        <h2 class="thesis">Мы вкладываем логистику в заказы, у которых уже нет спроса</h2>
+        <p class="thesis-sub">Перенос — нормальный инструмент сервиса. Проблема не в первом и не во втором переносе, а в том, что счётчик никто не ведёт и остановиться некому: заказ уходит на 4-й, 5-й, 6-й круг, занимая полку, слот и курьера — и в итоге всё равно отменяется.</p>
+      </div>
+      <div class="pattern-strip"></div>
+    </div>
+  </section>
+
+  <!-- 3 · AS IS -->
+  <section class="slide" data-slide>
+    <div class="card">
+      <span class="la-badge">la</span>
+      <span class="eyebrow">1 · Как устроено сейчас</span>
+      <h2>Перенести заказ можно на любом этапе — и почти никто не считает, какой это по счёту</h2>
+      <div class="card__body">
+        <div class="stages">
+          <div class="stage">
+            <div class="stage__head"><span class="stage__idx">1</span><span class="stage__name">Собирается на складе</span></div>
+            <div class="stage__box">
+              <div class="who"><span class="chip is-sys">система</span></div>
+              Технически перенос возможен, но на этом этапе он <b>избыточен</b> — заказ ещё не обещан в конкретный день
+              <span class="stage__lim no">лимита нет</span>
+            </div>
+          </div>
+          <div class="stage">
+            <div class="stage__head"><span class="stage__idx">2</span><span class="stage__name">Логистика, включая ТВХ</span></div>
+            <div class="stage__box is-crit">
+              <div class="who"><span class="chip">супервайзер</span><span class="chip">колл-центр</span></div>
+              Задержка поставки, некорректный адрес, дискретность доставки, уровень сервиса, просьба клиента
+              <span class="stage__lim no">лимита нет</span>
+            </div>
+          </div>
+          <div class="stage">
+            <div class="stage__head"><span class="stage__idx">3</span><span class="stage__name">Курьер на маршруте</span></div>
+            <div class="stage__box is-crit">
+              <div class="who"><span class="chip">курьер</span><span class="chip">колл-центр</span><span class="chip">супервайзер</span></div>
+              Просьба клиента, недозвон, задержка на маршруте, неверный адрес, форс-мажор
+              <span class="stage__lim no">лимита нет · только 3 попытки доставки</span>
+            </div>
+          </div>
+          <div class="stage">
+            <div class="stage__head"><span class="stage__idx">4</span><span class="stage__name">После маршрута</span></div>
+            <div class="stage__box is-crit">
+              <div class="who"><span class="chip">колл-центр</span><span class="chip">супервайзер</span></div>
+              Заказ лёг на полку без даты — КЦ вручную ежедневно проставляет новую обещанную дату
+              <span class="stage__lim no">лимита нет</span>
+            </div>
+          </div>
+        </div>
+        <div class="stage-band" style="background:var(--critical-soft); border-color:var(--critical-line)">
+          Единственное ограничение во всей цепочке — <b>1 перенос для клиента в личном кабинете</b>. Всё остальное — ручной процесс без счётчика: клиент, КЦ, супервайзер и курьер видят разные данные и не знают, какой это перенос по счёту.
+        </div>
+      </div>
+      <span class="slide__num">03</span>
+    </div>
+  </section>
+
+  <!-- 4 · МАСШТАБ -->
+  <section class="slide" data-slide>
+    <div class="card">
+      <span class="la-badge">la</span>
+      <span class="eyebrow">2 · Масштаб</span>
+      <h2>За 2,5 месяца — 190 тысяч переносов</h2>
+      <div class="card__body">
+        <div class="stats">
+          <div class="stat">
+            <div class="stat__val">152<small>тыс.</small></div>
+            <div class="stat__lab">заказов LMD получили хотя бы один перенос<br>≈ 58 тыс. в месяц</div>
+          </div>
+          <div class="stat">
+            <div class="stat__val">190<small>тыс.</small></div>
+            <div class="stat__lab">событий переноса всего<br>в среднем 1,25 переноса на такой заказ</div>
+          </div>
+          <div class="stat is-crit">
+            <div class="stat__val">36<small>%</small></div>
+            <div class="stat__lab">переносов происходит <b>на маршруте</b> — это самая дорогая часть: курьер уже выехал</div>
+          </div>
+          <div class="stat is-crit">
+            <div class="stat__val">6,6<small>тыс.</small></div>
+            <div class="stat__lab">заказов с <b>3 и более</b> переносами (4,3%) — из них 1,7 тыс. с четырьмя и более</div>
+          </div>
+        </div>
+        <ul class="bullets">
+          <li>Хвост длинный: в выгрузке есть заказы с <b>13, 17 и 22 переносами</b> — то есть верхней границы физически не существует</li>
+          <li>По мере роста числа переносов состав меняется: до 3-го быстро растут дорогие <b>on-route</b> переносы, после 4-го — заказ просто <b>лежит и ждёт</b> (растёт pre-route)</li>
+        </ul>
+        <p class="src"><b>Источник:</b> PA-7905, Андрей Югов, обновлено 17.08.2026. Период 13.05–31.07.2026, RU.</p>
+      </div>
+      <span class="slide__num">04</span>
+    </div>
+  </section>
+
+  <!-- 5 · ПРИЧИНЫ -->
+  <section class="slide" data-slide>
+    <div class="card">
+      <span class="la-badge">la</span>
+      <span class="eyebrow">3 · Почему переносят</span>
+      <h2>До маршрута переносит клиент. На маршруте каждый четвёртый перенос — недозвон</h2>
+      <div class="card__body">
+        <div class="split">
+          <div class="panel">
+            <div class="panel__title">До выхода на маршрут <span class="tag">129 тыс. событий · 64%</span></div>
+            <div class="reasons">
+              <div class="reason"><span>по просьбе клиента</span><span class="reason__track"><span class="reason__fill" style="width:92%"></span></span><span class="reason__pct">92%</span></div>
+              <div class="reason"><span>задержка поставки</span><span class="reason__track"><span class="reason__fill is-warn" style="width:7.4%"></span></span><span class="reason__pct">7%</span></div>
+              <div class="reason"><span>недозвон до клиента</span><span class="reason__track"><span class="reason__fill is-crit" style="width:0.5%"></span></span><span class="reason__pct">1%</span></div>
+            </div>
+          </div>
+          <div class="panel" style="background:var(--critical-soft); border-color:var(--critical-line)">
+            <div class="panel__title">На маршруте <span class="tag crit">69 тыс. событий · 36%</span></div>
+            <div class="reasons">
+              <div class="reason"><span>по просьбе клиента</span><span class="reason__track"><span class="reason__fill" style="width:71%"></span></span><span class="reason__pct">71%</span></div>
+              <div class="reason"><span>недозвон до клиента</span><span class="reason__track"><span class="reason__fill is-crit" style="width:27.5%"></span></span><span class="reason__pct">28%</span></div>
+              <div class="reason"><span>задержка / просрочка</span><span class="reason__track"><span class="reason__fill is-warn" style="width:1.4%"></span></span><span class="reason__pct">1%</span></div>
+            </div>
+          </div>
+        </div>
+        <ul class="bullets">
+          <li><b>28% переносов на маршруте — недозвон.</b> Курьер уже приехал, но не смог связаться. Это прямой аргумент за подтверждение готовности принять заказ перед повторным выездом</li>
+          <li>Интенсивность недозвонов растёт с каждой попыткой: <b>+0,4 недозвона</b> между 1-й и 2-й, столько же между 2-й и 3-й</li>
+          <li><b>~5% переносов — по нашей вине</b> (задержка поставки, просрочка). Они не должны расходовать клиентский лимит</li>
+        </ul>
+        <p class="src"><b>Источник:</b> PA-7905, срез по delivery_status × external_code.</p>
+      </div>
+      <span class="slide__num">05</span>
+    </div>
+  </section>
+
+  <!-- 6 · ЭКОНОМИКА -->
+  <section class="slide" data-slide>
+    <div class="card">
+      <span class="la-badge">la</span>
+      <span class="eyebrow">4 · Экономика</span>
+      <h2>Перелом между 2-м и 3-м переносом. После 4-го заказ уносит деньги</h2>
+      <div class="card__body is-top">
+        <div class="split" style="grid-template-columns: minmax(260px,0.85fr) minmax(300px,1fr); align-items:center">
+          <table class="data">
+            <thead><tr><th>Переносов</th><th>RRR</th><th>NMV / заказ</th><th>PC2 / заказ</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>69%</td><td>3 939 ₽</td><td>802 ₽</td></tr>
+              <tr><td>2</td><td>73%</td><td>3 747 ₽</td><td>487 ₽</td></tr>
+              <tr class="is-break"><td>3</td><td>81%</td><td>2 823 ₽</td><td>136 ₽</td></tr>
+              <tr class="is-neg"><td>4</td><td>82%</td><td>2 643 ₽</td><td>−11 ₽</td></tr>
+              <tr class="is-neg"><td>5</td><td>83%</td><td>2 419 ₽</td><td>−827 ₽</td></tr>
+              <tr class="is-neg"><td>6</td><td>83%</td><td>2 899 ₽</td><td>−1 668 ₽</td></tr>
+            </tbody>
+          </table>
+          <div>
+            <div class="chart">
+              <div class="col"><div class="col__pos"><div class="bar" style="height:100%"><span class="bar__v">802</span></div></div><div class="zero"></div><div class="col__neg"></div></div>
+              <div class="col"><div class="col__pos"><div class="bar" style="height:60.7%"><span class="bar__v">487</span></div></div><div class="zero"></div><div class="col__neg"></div></div>
+              <div class="col"><div class="col__pos"><div class="bar" style="height:17%"><span class="bar__v">136</span></div></div><div class="zero"></div><div class="col__neg"></div></div>
+              <div class="col"><div class="col__pos"></div><div class="zero"></div><div class="col__neg"><div class="bar neg" style="height:0.7%"><span class="bar__v is-out">−11</span></div></div></div>
+              <div class="col"><div class="col__pos"></div><div class="zero"></div><div class="col__neg"><div class="bar neg" style="height:49.6%"><span class="bar__v">−827</span></div></div></div>
+              <div class="col"><div class="col__pos"></div><div class="zero"></div><div class="col__neg"><div class="bar neg" style="height:100%"><span class="bar__v">−1 668</span></div></div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;max-width:700px">
+              <div class="col__lab" style="padding-top:6px"><b>1</b></div><div class="col__lab" style="padding-top:6px"><b>2</b></div><div class="col__lab" style="padding-top:6px"><b>3</b></div><div class="col__lab" style="padding-top:6px"><b>4</b></div><div class="col__lab" style="padding-top:6px"><b>5</b></div><div class="col__lab" style="padding-top:6px"><b>6</b></div>
+            </div>
+            <p class="chart-legend" style="text-align:center;margin-top:4px">PC2 на заказ, ₽ — по количеству переносов</p>
+          </div>
+        </div>
+        <p class="tbl-note">Между 2-м и 3-м переносом <b>RRR растёт на 8 п.п.</b> (73% → 81%), а <b>PC2 падает в 3,5 раза</b> (487 ₽ → 136 ₽). При четырёх переносах экономика заказа уже около нуля, дальше — уверенный минус.</p>
+        <p class="src"><b>Важная оговорка (её делает и сам аналитик):</b> это итоговая экономика групп заказов, а не маржинальный эффект конкретно N-го переноса. Цифры показывают, где проходит граница, но не доказывают, что запрет N-го переноса вернёт PC2 на уровень предыдущей группы. Поэтому решение ниже мы строим не на «поднимем PC2», а на «перестанем вкладываться туда, где отдачи нет».</p>
+      </div>
+      <span class="slide__num">06</span>
+    </div>
+  </section>
+
+  <!-- 7 · ЧТО ПЛОХОГО -->
+  <section class="slide" data-slide>
+    <div class="card">
+      <span class="la-badge">la</span>
+      <span class="eyebrow">5 · Что плохого</span>
+      <h2>Три проблемы: нет счётчика, нет прозрачности, нет границы</h2>
+      <div class="card__body">
+        <div class="split" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+          <div class="panel">
+            <div class="panel__title">Нет единого счётчика</div>
+            <ul>
+              <li>Клиент, КЦ, супервайзер и курьер оперируют <b>разными данными</b> — никто не знает, какой это перенос по счёту</li>
+              <li>Лимит есть только у клиента в ЛК (1 раз). У КЦ — инструкция на 2, технически не ограничено</li>
+              <li>Результат — заказы с <b>13, 17, 22 переносами</b> в выгрузке</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <div class="panel__title">Нет прозрачности</div>
+            <ul>
+              <li>Слоты у КЦ и у клиента <b>рассинхронизированы</b> — видят разное</li>
+              <li>Курьер не знает, что заказ уже перенесён — едет впустую</li>
+              <li>При недозвоне механика ручная: КЦ и супервайзеры разбирают вручную, для клиента процесс непрозрачен</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <div class="panel__title">Нет границы</div>
+            <ul>
+              <li>Горизонт переноса уходит на <b>2–3 недели вперёд</b></li>
+              <li>Товар всё это время <b>заблокирован</b>: не в стоке, не продаётся другому клиенту</li>
+              <li>К 3-му переносу вероятность отмены превышает <b>50%</b></li>
+            </ul>
+          </div>
+        </div>
+        <div class="stage-band" style="background:var(--critical-soft);border-color:var(--critical-line);text-align:left">
+          <b>Во что это обходится:</b> клиент получает негативный опыт и уходит &nbsp;·&nbsp; логистика платит за холдирование стока, бесполезные выезды и хранение на ТВХ &nbsp;·&nbsp; КЦ ежедневно вручную проставляет даты &nbsp;·&nbsp; метрики DOT и CR on route искажены заказами, у которых практически нет шанса доехать
+        </div>
+        <p class="src"><b>Источники:</b> PA-7905 (объёмы и экономика) · «Флоу переносов LMD», Э. Вербенко, 01.07.2026 (вероятность отмены) · встреча по переносам 20.05.2026 (операционная механика).</p>
+      </div>
+      <span class="slide__num">07</span>
+    </div>
+  </section>
+
+  <!-- 8 · TO BE -->
+  <section class="slide" data-slide>
+    <div class="card">
+      <span class="la-badge">la</span>
+      <span class="eyebrow">6 · Что меняем</span>
+      <h2>Сквозной счётчик на всей цепочке и прозрачность на каждом этапе</h2>
+      <div class="card__body">
+        <div class="stages">
+          <div class="stage">
+            <div class="stage__head"><span class="stage__idx">1</span><span class="stage__name">Собирается на складе</span></div>
+            <div class="stage__box is-good">
+              <b>Проактивная коммуникация</b> с клиентом при задержке в цепочке поставок — до того, как он сам об этом узнал
+            </div>
+          </div>
+          <div class="stage">
+            <div class="stage__head"><span class="stage__idx">2</span><span class="stage__name">Логистика, включая ТВХ</span></div>
+            <div class="stage__box is-good">
+              Переносы по вине Lamoda <b>помечаются отдельно</b> и не расходуют клиентский лимит
+            </div>
+          </div>
+          <div class="stage">
+            <div class="stage__head"><span class="stage__idx">3</span><span class="stage__name">Курьер на маршруте</span></div>
+            <div class="stage__box is-good">
+              При недозвоне — <b>взаимодействие с клиентом через приложение</b><br><br>
+              Курьер видит в своём приложении, что клиент перенёс заказ, <b>в реальном времени</b>
+            </div>
+          </div>
+          <div class="stage">
+            <div class="stage__head"><span class="stage__idx">4</span><span class="stage__name">После маршрута</span></div>
+            <div class="stage__box is-good">
+              Клиент <b>сам выбирает дату</b> после недозвона или отменяет заказ. Нет реакции — заказ отменяется автоматически через 24 часа
+            </div>
+          </div>
+        </div>
+        <div class="stage-band">
+          <b>Сквозная механика для всех участников:</b> единый счётчик переносов, который одинаково видят клиент, КЦ, супервайзер и курьер &nbsp;+&nbsp; ограничение горизонта переноса <b>до 7 дней</b> вместо сегодняшних 2–3 недель
+        </div>
+      </div>
+      <span class="slide__num">08</span>
+    </div>
+  </section>
+
+  <!-- 9 · ПРАВИЛО -->
+  <section class="slide" data-slide>
+    <div class="card">
+      <span class="la-badge">la</span>
+      <span class="eyebrow">7 · Целевое правило</span>
+      <h2>Не жёсткий обрыв, а три уровня</h2>
+      <div class="card__body">
+        <div class="ladder">
+          <div class="rung is-ok">
+            <div class="rung__n">1–2</div>
+            <div class="rung__t"><b>Свободно</b>Экономика здоровая: PC2 802 ₽ и 487 ₽ на заказ. Перенос здесь — нормальный сервис, ограничивать нечего</div>
+          </div>
+          <div class="rung is-warn">
+            <div class="rung__n">3-й</div>
+            <div class="rung__t"><b>Только по подтверждению спроса клиентом</b>Заказ ещё может доехать (PC2 136 ₽), но каждый четвёртый перенос на маршруте — недозвон. Прежде чем везти третий раз, спрашиваем клиента: заказ ещё нужен? Нет ответа — отмена</div>
+          </div>
+          <div class="rung is-crit">
+            <div class="rung__n">4+</div>
+            <div class="rung__t"><b>Блокируем</b>PC2 отрицательный: −11 ₽, −827 ₽, −1 668 ₽. Здесь спорить не о чем — каждый следующий перенос уничтожает стоимость</div>
+          </div>
+        </div>
+        <ul class="bullets">
+          <li>Плюс два общих ограничения: <b>горизонт переноса ≤ 7 дней</b> и <b>переносы по вине Lamoda не расходуют лимит клиента</b> (это ~5% событий)</li>
+          <li><b>Почему не жёсткий лимит 2.</b> Он обрубает и те заказы, что сегодня доезжают с положительным PC2 — до 0,25 млн ₽ PC2 в месяц. Подтверждение спроса сохраняет их там, где спрос реальный, и режет там, где его нет</li>
+        </ul>
+      </div>
+      <span class="slide__num">09</span>
+    </div>
+  </section>
+
+  <!-- 10 · OUTCOME -->
+  <section class="slide" data-slide>
+    <div class="card">
+      <span class="la-badge">la</span>
+      <span class="eyebrow">8 · Outcome</span>
+      <h2>Что получим</h2>
+      <div class="card__body is-top">
+        <div class="stats">
+          <div class="stat is-accent">
+            <div class="stat__val">~3,6<small>тыс./мес</small></div>
+            <div class="stat__lab">переносов не состоится — они просто не будут разрешены</div>
+          </div>
+          <div class="stat is-accent">
+            <div class="stat__val">~2,1<small>тыс./мес</small></div>
+            <div class="stat__lab">курьерских выездов не состоится: это те самые дорогие on-route попытки</div>
+          </div>
+          <div class="stat is-accent">
+            <div class="stat__val">~5,5<small>млн ₽/год</small></div>
+            <div class="stat__lab">прямая экономия на несостоявшихся выездах (≈ 0,46 млн ₽/мес, из расчёта 220 ₽ за выезд)</div>
+          </div>
+          <div class="stat is-accent">
+            <div class="stat__val">≤ 7<small>дней</small></div>
+            <div class="stat__lab">предельный горизонт переноса вместо сегодняшних 2–3 недель</div>
+          </div>
+        </div>
+        <div class="split">
+          <div class="panel">
+            <div class="panel__title">Эффекты, которые пока не оцифрованы <span class="tag">открытый вопрос</span></div>
+            <ul>
+              <li><b>Полка БМ:</b> товар возвращается в сток недели на 2 раньше и продаётся другому клиенту</li>
+              <li><b>Слоты:</b> освобождаются под заказы с реальным спросом</li>
+              <li><b>Нагрузка КЦ:</b> меньше ручного проставления дат и меньше обращений от «зависших» клиентов</li>
+              <li><b>Чистота метрик:</b> DOT и CR on route перестают учитывать заказы без шанса на доставку</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <div class="panel__title">Guardrails — за чем следим после запуска <span class="tag ok">не сломать</span></div>
+            <ul>
+              <li><b>CR (отмены)</b> — вырастет ожидаемо, но не должен вырасти сверх согласованного порога: иначе мы просто ускорили отмены, а не сэкономили</li>
+              <li><b>Contact rate КЦ</b> — не должен вырасти: клиенты не должны пойти в поддержку за тем, чего лишились</li>
+              <li><b>CSAT и BDR</b> — не ухудшаются</li>
+            </ul>
+          </div>
+        </div>
+        <p class="src"><b>Расчёт:</b> на сырой выгрузке PA-7905 (заказы × переносы, средние on-route/pre-route на группу). Стоимость выезда 220 ₽ — внутренняя оценка продукта. Два независимых метода расчёта дали 2,08 и 2,11 тыс. выездов в месяц. Цифры требуют сверки с аналитикой перед защитой в финмодели.</p>
+      </div>
+      <span class="slide__num">10</span>
+    </div>
+  </section>
+
+  <!-- 11 · ЧЕГО НЕ ОБЕЩАЕМ -->
+  <section class="slide" data-slide>
+    <div class="card">
+      <span class="la-badge">la</span>
+      <span class="eyebrow">9 · Границы и риски</span>
+      <h2>Чего эта инициатива не делает</h2>
+      <div class="card__body">
+        <div class="panel" style="background:var(--warn-soft);border-color:var(--warn-line)">
+          <div class="panel__title">Не обещаем</div>
+          <ul>
+            <li><b>Не «спасаем» PC2 заказа.</b> Лимит не меняет поведение клиента: тот, кто передумал, откажется в любом случае — просто раньше. Мы прекращаем вкладывать логистику, а не возвращаем маржу</li>
+            <li><b>Не убираем переносы.</b> Переносы 1-й и 2-й никуда не денутся — это 96% всех заказов с переносами. Экономия только на заблокированных</li>
+            <li><b>Не считаем эффект от освобождённой полки и слотов</b> — направление верное, цифры пока нет</li>
+          </ul>
+        </div>
+        <div class="risk-grid">
+          <div class="risk"><span class="risk__dot"></span><span><b>Зависимость от флоу недозвона.</b> Подтверждение спроса перед 3-м переносом — это 24h-флоу, он живёт в проекте «Флоу недозвона». Без него правило вырождается в жёсткий обрыв на двух переносах, со всеми рисками по PC2</span></div>
+          <div class="risk"><span class="risk__dot"></span><span><b>Единый счётчик — техническое ядро.</b> Экспресс, ЛК, КЦ и приложение курьера должны видеть одно значение. Без этого правило неисполнимо в принципе</span></div>
+          <div class="risk"><span class="risk__dot"></span><span><b>Переносы по вине Lamoda.</b> Нужен отдельный признак в системе, иначе клиент платит лимитом за нашу задержку поставки</span></div>
+          <div class="risk"><span class="risk__dot"></span><span><b>Регионы с редкой доставкой.</b> Там, где доставка 2 раза в неделю, 3 переноса = 3 недели ожидания. Возможно, нужен динамический лимит — вопрос открыт</span></div>
+        </div>
+      </div>
+      <span class="slide__num">11</span>
+    </div>
+  </section>
+
+  <!-- 12 · ЧТО ДАЛЬШЕ -->
+  <section class="slide" data-slide>
+    <div class="card">
+      <span class="la-badge">la</span>
+      <span class="eyebrow">10 · Что нужно от вас</span>
+      <h2>Три решения и три следующих шага</h2>
+      <div class="card__body">
+        <div class="ask-list">
+          <div class="ask"><span class="ask__num">1</span><span class="ask__text"><b>Согласовать правило:</b> 1–2 свободно, 3-й по подтверждению спроса, 4+ блокируется. Горизонт переноса ≤ 7 дней</span></div>
+          <div class="ask"><span class="ask__num">2</span><span class="ask__text"><b>Подтвердить связку с флоу недозвона.</b> Без 24h-подтверждения третий уровень правила не реализуется — нужна общая приоритизация двух инициатив</span></div>
+          <div class="ask"><span class="ask__num">3</span><span class="ask__text"><b>Определить владельца единого счётчика переносов</b> на стороне разработки: где он живёт и кто его выставляет во все каналы</span></div>
+        </div>
+        <div class="split" style="margin-top:6px">
+          <div class="panel">
+            <div class="panel__title">Следующие шаги</div>
+            <ul>
+              <li>Сверить расчёт экономии с продуктовой аналитикой и зафиксировать целевые guardrail-пороги по CR и contact rate</li>
+              <li>Отдельно посмотреть слоты с наибольшей долей переносов на маршруте — возможна причина, которую правилом не лечат</li>
+              <li>Проработать признак «перенос по вине Lamoda» с операциями и разработкой</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <div class="panel__title">Открытые вопросы</div>
+            <ul>
+              <li>Считаем pre-route и on-route переносы в один счётчик или раздельно?</li>
+              <li>Нужен ли динамический лимит для регионов с редкой доставкой?</li>
+              <li>Дублируем ли ограничение лимитом дней хранения на складе — или счётчика достаточно?</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <span class="slide__num">12</span>
+    </div>
+  </section>
+
+  <nav class="chrome">
+    <button class="nav-btn" id="prevBtn" type="button" aria-label="Предыдущий слайд">‹</button>
+    <div class="dots" id="dots"></div>
+    <button class="nav-btn" id="nextBtn" type="button" aria-label="Следующий слайд">›</button>
+    <span class="counter" id="counter">1 / 12</span>
+  </nav>
+
+</div>
+
+<script>
+  (function () {
+    var slides = Array.prototype.slice.call(document.querySelectorAll('[data-slide]'));
+    var dotsWrap = document.getElementById('dots');
+    var counter = document.getElementById('counter');
+    var prevBtn = document.getElementById('prevBtn');
+    var nextBtn = document.getElementById('nextBtn');
+    var current = 0;
+
+    slides.forEach(function (_, i) {
+      var dot = document.createElement('button');
+      dot.className = 'dot' + (i === 0 ? ' is-active' : '');
+      dot.type = 'button';
+      dot.setAttribute('aria-label', 'Слайд ' + (i + 1));
+      dot.addEventListener('click', function () { go(i); });
+      dotsWrap.appendChild(dot);
+    });
+    var dots = Array.prototype.slice.call(dotsWrap.children);
+
+    function go(i) {
+      if (i < 0 || i >= slides.length) return;
+      slides[current].classList.remove('is-active');
+      dots[current].classList.remove('is-active');
+      current = i;
+      slides[current].classList.add('is-active');
+      dots[current].classList.add('is-active');
+      counter.textContent = (current + 1) + ' / ' + slides.length;
+      prevBtn.disabled = current === 0;
+      nextBtn.disabled = current === slides.length - 1;
+    }
+
+    prevBtn.addEventListener('click', function () { go(current - 1); });
+    nextBtn.addEventListener('click', function () { go(current + 1); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') go(current + 1);
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(current - 1);
+    });
+
+    go(0);
+  })();
+</script>
+</body>
+</html>
